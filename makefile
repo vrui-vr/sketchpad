@@ -1,6 +1,5 @@
 ########################################################################
-# Makefile for the SketchPad drawing/sketching/doodling/note taking
-# application.
+# Makefile for the SketchPad vector drawing package.
 # Copyright (c) 1999-2025 Oliver Kreylos
 #
 # This file is part of the WhyTools Build Environment.
