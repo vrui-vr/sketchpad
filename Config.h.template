@@ -1,0 +1,11 @@
+/***********************************************************************
+Config.h - Configuration header file for SketchPad application.
+Copyright (c) 2024-2025 Oliver Kreylos
+***********************************************************************/
+
+#ifndef CONFIG_INCLUDED
+#define CONFIG_INCLUDED
+
+#define SKETCHPAD_SHADERDIR "Shaders"
+
+#endif
