@@ -21,14 +21,14 @@
 ########################################################################
 
 # Set directory containing Vrui's build system:
-VRUI_MAKEDIR := /usr/local/share/Vrui-13.0/make
+VRUI_MAKEDIR = /usr/local/share/Vrui-13.0/make
 
 # Base installation directory for SketchPad. If this is set to the
-# default of $(PWD), SketchPad does not have to be installed to be
-# run.
+# default of $(PROJECT_ROOT), SketchPad does not have to be installed to
+# be run.
 # Important note: Do not use ~ as an abbreviation for the user's home
 # directory here; use $(HOME) instead.
-INSTALLDIR := $(shell pwd)
+INSTALLDIR = $(PROJECT_ROOT)
 
 ########################################################################
 # Everything below here should not have to be changed
@@ -42,7 +42,7 @@ PROJECT_NAME = SketchPad
 # other. The value should be identical to the major.minor version
 # number found in VERSION in the root package directory.
 PROJECT_MAJOR = 1
-PROJECT_MINOR = 0
+PROJECT_MINOR = 1
 
 # Include definitions for the system environment and system-provided
 # packages

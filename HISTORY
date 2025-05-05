@@ -3,3 +3,6 @@ SketchPad Change History
 
 SketchPad 1.0:
 - Beginning of history file
+
+SketchPad 1.1:
+- Adapted makefile to improved Vrui setup.
