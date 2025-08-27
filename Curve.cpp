@@ -46,9 +46,6 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchObjectContainer.h"
 #include "SketchSettings.h"
 
-// DEBUGGING
-#include <iostream>
-
 /************************************
 Declaration of class Curve::Renderer:
 ************************************/
@@ -638,10 +635,13 @@ void CurveFactory::buttonDown(const Point& pos)
 
 void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood)
 	{
+	/* Check if the tool just started lingering: */
+	bool startLingering=lingering&&!lastLinger;
+	
 	/* Check if the factory is already in line mode: */
 	if(lineMode)
 		{
-		if(lingering&&!lastLinger)
+		if(startLingering)
 			{
 			/* Snap the line's end point against nearby sketch objects: */
 			SketchObject::SnapResult sr=settings.snap(pos,Math::sqr(settings.getPickRadius()));
@@ -653,20 +653,21 @@ void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood
 		else
 			current->points.back()=pos;
 		}
-	else if(lingering&&!lastLinger)
+	else if(startLingering)
 		{
 		/* Check if the current curve should be turned into a line: */
 		Vector dir=pos-current->points.front();
+		Scalar maxBackspace=settings.getDetailSize()*dir.mag();
 		std::vector<Point>::iterator pIt=current->points.begin();
 		Scalar offset=*pIt*dir;
 		bool straight=true;
 		for(++pIt;straight&&pIt!=current->points.end();++pIt)
 			{
 			Scalar nextOffset=*pIt*dir;
-			straight=nextOffset>=offset;
+			straight=nextOffset>=offset-maxBackspace;
 			offset=nextOffset;
 			}
-		if(straight)
+		if(firstNeighborhood||straight)
 			{
 			/* Create the line: */
 			Curve* line=new Curve;

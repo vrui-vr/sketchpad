@@ -983,7 +983,7 @@ GLMotif::PopupWindow* SketchPad::createPaletteDialog(void)
 SketchPad::SketchPad(int& argc,char**& argv)
 	:Vrui::Application(argc,argv),
 	 lineWidth(3.0f),
-	 lingerRadius(Vrui::getUiSize()*Vrui::Scalar(0.5)),
+	 lingerRadius(Vrui::getUiSize()*Vrui::Scalar(1)),
 	 sketchFactoryType(0),sketchFactoryVersion(0U),nextSketchFactory(0),
 	 mainMenu(0),paletteDialog(0),
 	 imageHelper(Vrui::getWidgetManager(),"Image.png",".ppm;.png;.jpg;.jpeg;.tif;.tiff"),
