@@ -75,6 +75,33 @@ unsigned int Image::getTypeCode(void) const
 	return typeCode;
 	}
 
+bool Image::pick(SketchObject::PickResult& result) const
+	{
+	/* Transform the pick sphere to image space: */
+	Point imgCenter=imageTransform.inverseTransform(center);
+	
+	/* Calculate the sphere center's distance from the image's domain: */
+	const Images::BaseImage& image=textureSet->getTexture(imageKey).getImage();
+	Scalar dist2(0);
+	Point imgPick=imgCenter;
+	for(int i=0;i<2;++i)
+		{
+		if(imgCenter[i]<Scalar(0))
+			{
+			dist2+=Math::sqr(imgCenter[i]-Scalar(0));
+			imgPick[i]=Scalar(0);
+			}
+		else if(imgCenter[i]>Scalar(image.getSize(i)))
+			{
+			dist2+=Math::sqr(imgCenter[i]-Scalar(image.getSize(i)));
+			imgPick[i]=Scalar(image.getSize(i));
+			}
+		}
+	
+	/* Transform the pick distance and the picked point back to sketch space: */
+	return result.update(dist2*Math::sqr(transform.getScaling()),this,transform.transform(imgPick));
+	}
+
 bool Image::pick(const Point& center,Scalar radius2) const
 	{
 	/* Check if the transformed sphere touches the image's rectangle: */

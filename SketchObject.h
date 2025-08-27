@@ -24,6 +24,8 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #ifndef SKETCHOBJECT_INCLUDED
 #define SKETCHOBJECT_INCLUDED
 
+#include <Math/Math.h>
+
 #include "SketchGeometry.h"
 
 /* Forward declarations: */
@@ -47,22 +49,34 @@ class SketchObject
 		{
 		/* Elements: */
 		public:
-		Point position; // Pick position
-		Scalar radius2; // Squared radius of the pick request or squared distance to current picked point
-		SketchObject* picked; // Currently picked object; ==0 if no object has been picked
-		Point pickedPos; // Picked position on currently picked object
+		Point center; // Pick sphere's center
+		Scalar radius2; // Pick sphere's squared radius, or squared distance to currently picked point
+		SketchObject* pickedObject; // Currently picked object; ==0 if no object has been picked
+		Point pickedPoint; // Picked position on currently picked object
 		
 		/* Constructors and destructors: */
-		PickResult(const Point& sPosition,Scalar sRadius2) // Creates a pick query for the given point and squared radius
-			:position(sPosition),radius2(sRadius2),
-			 picked(0)
+		PickResult(const Point& sCenter,Scalar sRadius) // Creates a pick query for the given center point and radius
+			:center(sCenter),radius2(Math::sqr(sRadius)),
+			 pickedObject(0)
 			{
 			}
 		
 		/* Methods: */
 		bool isValid(void) const // Returns true if an object has been picked
 			{
-			return picked!=0;
+			return pickedObject!=0;
+			}
+		bool update(Scalar dist2,SketchObject* object,const Point& point) // Potentially updates the pick result from picking the given object; returns true if pick result changed
+			{
+			bool pickChanged=radius2>dist2;
+			if(pickChanged)
+				{
+				radius2=dist2;
+				pickedObject=object;
+				pickedPoint=point;
+				}
+			
+			return pickChanged;
 			}
 		};
 	

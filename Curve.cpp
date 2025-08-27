@@ -228,34 +228,35 @@ bool Curve::pick(SketchObject::PickResult& result) const
 	
 	/* Check the beginning vertex against the given sphere: */
 	std::vector<Point>::const_iterator p0It=points.begin();
-	Scalar dist2=Geometry::sqrDist(center,*p0It);
-	if(result.radius2>dist2
-	
-	if(Geometry::sqrDist(center,*p0It)<=radius2)
-		return true;
+	Scalar dist2=Geometry::sqrDist(result.position,*p0It)/Math::sqr(Scalar(1.5)); // Reduce pick distance for a curve's end point
+	picked=result.update(dist2,this,*p0It)||picked;
 	
 	/* Check every curve segment against the given sphere: */
+	std::vector<Point>::const_iterator lastIt=points.end()-1;
 	for(std::vector<Point>::const_iterator p1It=p0It+1;p1It!=points.end();p0It=p1It,++p1It)
 		{
 		/* Check the segment's end vertex against the given sphere: */
-		if(Geometry::sqrDist(center,*p1It)<=radius2)
-			return true;
+		Scalar dist2=Geometry::sqrDist(result.center,*p1It);
+		if(p1It==lastIt)
+			dist2/=Math::sqr(Scalar(1.5)); // Reduce pick distance for a curve's end point
+		picked=result.update(dist2,this,*p1It)||picked;
 		
-		/* Check the line segment against the given point: */
+		/* Check the line segment against the given sphere: */
 		Vector segDir=*p1It-*p0It;
 		Scalar segLength2=segDir.sqr();
-		if(segLength2>=radius2)
+		if(segLength2>Scalar(0))
 			{
-			/* Check if the point is inside the segment's extents: */
-			Vector cp0=center-*p0It;
-			Scalar y=segDir*cp0;
-			Scalar y2=Math::sqr(y)/segLength2;
-			if(y>=Scalar(0)&&y2<=segLength2)
+			/* Check if the sphere's center is inside the segment's extents: */
+			Point mid=Geometry::mid(*p0It,*p1It);
+			Vector mc=result.center-mid;
+			Scalar y=segDir*mc;
+			if(Scalar(2)*Math::abs(y)<segLength2)
 				{
-				/* Check the distance from the given circle's center to the segment's line: */
-				Scalar dist2=Geometry::sqr(cp0)-y2;
-				if(dist2<=radius2)
-					return true;
+				/* Check the distance from the sphere's center to the segment: */
+				Scalar mc2=mc.sqr();
+				Scalar dist2=mc2-Math::sqr(y);
+				Point pp=Geometry::addScaled(mid,segDir,y/segLength2);
+				picked=result.update(dist2,this,pp)||picked;
 				}
 			}
 		}
