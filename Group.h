@@ -39,6 +39,7 @@ class Group:public SketchObject,public SketchObjectContainer
 	/* Methods from SketchObject: */
 	public:
 	virtual unsigned int getTypeCode(void) const;
+	virtual bool pick(PickResult& result) const;
 	virtual bool pick(const Point& center,Scalar radius2) const;
 	virtual SnapResult snap(const Point& center,Scalar radius2) const;	
 	virtual SketchObject* clone(void) const;

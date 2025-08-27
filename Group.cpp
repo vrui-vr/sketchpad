@@ -43,6 +43,20 @@ unsigned int Group::getTypeCode(void) const
 	return typeCode;
 	}
 
+bool Group::pick(SketchObject::PickResult& result) const
+	{
+	/* Pick all members of the group: */
+	bool childPicked=false;
+	for(SketchObjectList::const_iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
+		childPicked=soIt->pick(result)||childPicked;
+	
+	/* Set the group as the picked object if one of the members was picked: */
+	if(childPicked)
+		result.pick=this;
+	
+	return childPicked;
+	}
+
 bool Group::pick(const Point& center,Scalar radius2) const
 	{
 	/* Pick all members of the group: */

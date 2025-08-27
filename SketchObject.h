@@ -43,6 +43,29 @@ class SketchObject
 	
 	/* Embedded classes: */
 	public:
+	struct PickResult // Structure to return the result of a pick query
+		{
+		/* Elements: */
+		public:
+		Point position; // Pick position
+		Scalar radius2; // Squared radius of the pick request or squared distance to current picked point
+		SketchObject* picked; // Currently picked object; ==0 if no object has been picked
+		Point pickedPos; // Picked position on currently picked object
+		
+		/* Constructors and destructors: */
+		PickResult(const Point& sPosition,Scalar sRadius2) // Creates a pick query for the given point and squared radius
+			:position(sPosition),radius2(sRadius2),
+			 picked(0)
+			{
+			}
+		
+		/* Methods: */
+		bool isValid(void) const // Returns true if an object has been picked
+			{
+			return picked!=0;
+			}
+		};
+	
 	struct SnapResult // Structure to return the result of a snap query
 		{
 		/* Elements: */
@@ -74,6 +97,7 @@ class SketchObject
 		return boundingBox;
 		}
 	virtual unsigned int getTypeCode(void) const =0; // Returns an integer uniquely identifying a sketching object class
+	virtual bool pick(PickResult& result) const =0; // Picks this object with the given pick query; updates query object and returns true if object is picked
 	virtual bool pick(const Point& center,Scalar radius2) const =0; // Returns true if the sphere of the given center and radius touches the sketch object
 	virtual SnapResult snap(const Point& center,Scalar radius2) const =0; // Snaps the given point to the object, moving it by at most the given radius
 	virtual SketchObject* clone(void) const =0; // Creates an identical copy of the sketch object
