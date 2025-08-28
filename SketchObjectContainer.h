@@ -56,8 +56,7 @@ class SketchObjectContainer
 	virtual void append(SketchObject* newObject); // Appens the given object to the container's list
 	virtual void insertAfter(SketchObject* pred,SketchObject* newObject); // Inserts the given object after the given predecessor
 	virtual void remove(SketchObject* object); // Removes the given object from the container
-	virtual SketchObject* pickTop(const Point& pos,Scalar radius2); // Picks the top-most object touched by the given sphere
-	virtual SketchObject::SnapResult snap(const Point& center,Scalar radius2) const; // Snaps the given position against all sketch objects
+	virtual SketchObject::PickResult pick(const Point& pos,Scalar radius); // Returns a pick result for this container
 	};
 
 #endif

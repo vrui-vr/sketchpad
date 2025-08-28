@@ -72,28 +72,14 @@ void SketchObjectContainer::remove(SketchObject* object)
 	sketchObjects.erase(SketchObjectList::iterator(object));
 	}
 
-SketchObject* SketchObjectContainer::pickTop(const Point& pos,Scalar radius2)
+SketchObject::PickResult SketchObjectContainer::pick(const Point& pos,Scalar radius)
 	{
-	/* Search backwards from the topmost to the bottommost object: */
-	for(SketchObjectList::reverse_iterator soIt=sketchObjects.rbegin();soIt!=sketchObjects.rend();++soIt)
-		if(soIt->pick(pos,radius2))
-			return &*soIt;
+	/* Create a pick result: */
+	SketchObject::PickResult result(pos,radius);
 	
-	return 0;
-	}
-
-SketchObject::SnapResult SketchObjectContainer::snap(const Point& center,Scalar radius2) const
-	{
-	/* Check the given sphere against all sketch objects: */
-	SketchObject::SnapResult result;
-	result.valid=false;
-	result.dist2=radius2;
-	for(SketchObjectList::const_iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
-		{
-		SketchObject::SnapResult sr=soIt->snap(center,result.dist2);
-		if(sr.valid)
-			result=sr;
-		}
+	/* Pick objects from topmost to bottommost: */
+	for(SketchObjectList::reverse_iterator soIt=sketchObjects.rbegin();soIt!=sketchObjects.rend();++soIt)
+		soIt->pick(result);
 	
 	return result;
 	}

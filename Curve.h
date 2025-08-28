@@ -51,9 +51,7 @@ class Curve:public SketchObject
 	/* Methods from SketchObject: */
 	public:
 	virtual unsigned int getTypeCode(void) const;
-	virtual bool pick(PickResult& result) const;
-	virtual bool pick(const Point& center,Scalar radius2) const;
-	virtual SnapResult snap(const Point& center,Scalar radius2) const;	
+	virtual bool pick(PickResult& result);
 	virtual SketchObject* clone(void) const;
 	virtual void applySettings(const SketchSettings& settings);
 	virtual void transform(const Transformation& transform);
@@ -79,7 +77,7 @@ class CurveFactory:public SketchObjectFactory
 	
 	/* Constructors and destructors: */
 	public:
-	CurveFactory(const SketchSettings& sSettings);
+	CurveFactory(SketchSettings& sSettings);
 	virtual ~CurveFactory(void);
 	
 	/* Methods from SketchObjectFactory: */

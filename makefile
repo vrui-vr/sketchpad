@@ -147,7 +147,11 @@ SKETCHPAD_SOURCES = SketchObject.cpp \
                     Image.cpp \
                     SketchObjectCreator.cpp \
                     PaintBucket.cpp \
-                    SketchPad.cpp
+                    SketchPad.cpp \
+                    SketchPadTool.cpp \
+                    SketchTool.cpp \
+                    EraseTool.cpp \
+                    SelectTool.cpp
 
 $(SKETCHPAD_SOURCES:%.cpp=$(OBJDIR)/%.o): | $(DEPDIR)/config
 

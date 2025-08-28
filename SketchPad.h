@@ -30,8 +30,6 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GLMotif/TextFieldSlider.h>
 #include <GLMotif/HSVColorSelector.h>
 #include <GLMotif/FileSelectionHelper.h>
-#include <Vrui/Tool.h>
-#include <Vrui/GenericToolFactory.h>
 #include <Vrui/Application.h>
 
 #include "SketchGeometry.h"
@@ -46,137 +44,16 @@ namespace GLMotif {
 class PopupMenu;
 class PopupWindow;
 }
-class SketchObject;
 class SketchObjectFactory;
-class ImageFactory;
 
 class SketchPad:public Vrui::Application
 	{
 	/* Embedded classes: */
 	private:
-	class SketchPadTool:public Vrui::Tool,public Vrui::Application::Tool<SketchPad> // Base class for tools belonging to the SketchPad application
-		{
-		/* Elements: */
-		private:
-		Point lingerPos; // Neighborhood position for linger detection
-		bool firstLingerPos; // Flag if the linger position is the initial one when a button down event occurred
-		double lingerEndTime; // Application time at which the tool will enter lingering state if it does not leave the current neighborhood
-		bool lingering; // Flag whether the tool is currently lingering
-		Point lastPos; // Last tool position
-		bool lastLingering; // Flag whether the tool was lingering on the previous frame
-		
-		/* Constructors and destructors: */
-		public:
-		SketchPadTool(const Vrui::ToolFactory* factory,const Vrui::ToolInputAssignment& inputAssignment);
-		
-		/* New methods: */
-		bool hasMoved(void) const // Returns true if the tool has moved since the button down event
-			{
-			return !firstLingerPos;
-			}
-		bool isLingering(void) const // Returns true if the tool is currently lingering
-			{
-			return lingering;
-			}
-		bool wasLingering(void) const // Returns true of the tool was lingering on the previous frame
-			{
-			return lastLingering;
-			}
-		void buttonDown(const Point& pos); // Processes a button-down event at the given position and the current time
-		bool motion(const Point& pos); // Processes a motion event to the given position while the button is pressed at the current time; returns true if the tool actually moved
-		void buttonUp(const Point& pos); // Processes a button-up event at the given position and the current time
-		virtual void glRenderAction(GLContextData& contextData) const =0; // Renders sketch object-related tool state at the end of the application's display method
-		};
-	
-	class SketchTool;
-	typedef Vrui::GenericToolFactory<SketchTool> SketchToolFactory; // Factory class for sketching tools
-	
-	class SketchTool:public SketchPadTool
-		{
-		friend class Vrui::GenericToolFactory<SketchTool>;
-		
-		/* Elements: */
-		private:
-		static SketchToolFactory* factory; // Pointer to the class' factory object
-		SketchObjectFactory* sketchFactory; // Pointer to a factory for sketch objects
-		unsigned int sketchFactoryVersion; // Version number of sketch factory object
-		ImageFactory* imageFactory; // Pointer to sketch factory if current is an image factory
-		bool active; // Flag if the tool's button is currently pressed
-		
-		/* Constructors and destructors: */
-		public:
-		static void initClass(Vrui::ToolFactory* baseClass); // Initializes the tool class
-		SketchTool(const Vrui::ToolFactory* factory,const Vrui::ToolInputAssignment& inputAssignment);
-		virtual ~SketchTool(void);
-		
-		/* Methods from Vrui::Tool: */
-		virtual const Vrui::ToolFactory* getFactory(void) const;
-		virtual void buttonCallback(int buttonSlotIndex,Vrui::InputDevice::ButtonCallbackData* cbData);
-		virtual void frame(void);
-		
-		/* Methods from SketchPadTool: */
-		virtual void glRenderAction(GLContextData& contextData) const;
-		};
-	
-	class EraseTool;
-	typedef Vrui::GenericToolFactory<EraseTool> EraseToolFactory; // Factory class for erasing tools
-	
-	class EraseTool:public SketchPadTool
-		{
-		friend class Vrui::GenericToolFactory<EraseTool>;
-		
-		/* Elements: */
-		private:
-		static EraseToolFactory* factory; // Pointer to the class' factory object
-		bool active; // Flag whether the tool is active
-		Point lastPos; // Eraser position on the last frame
-		Capsule eraser; // The current eraser capsule
-		
-		/* Constructors and destructors: */
-		public:
-		static void initClass(Vrui::ToolFactory* baseClass); // Initializes the tool class
-		EraseTool(const Vrui::ToolFactory* factory,const Vrui::ToolInputAssignment& inputAssignment);
-		virtual ~EraseTool(void);
-		
-		/* Methods from Vrui::Tool: */
-		virtual const Vrui::ToolFactory* getFactory(void) const;
-		virtual void buttonCallback(int buttonSlotIndex,Vrui::InputDevice::ButtonCallbackData* cbData);
-		virtual void frame(void);
-		
-		/* Methods from SketchPadTool: */
-		virtual void glRenderAction(GLContextData& contextData) const;
-		};
-	
-	class SelectTool;
-	typedef Vrui::GenericToolFactory<SelectTool> SelectToolFactory; // Factory class for selecting tools
-	
-	class SelectTool:public SketchPadTool
-		{
-		friend class Vrui::GenericToolFactory<SelectTool>;
-		
-		/* Elements: */
-		private:
-		static SelectToolFactory* factory; // Pointer to the class' factory object
-		bool dragging; // Flag whether the tool is dragging the current selection
-		Point initialDragPos; // Initial dragging position
-		Box box; // The current selection box
-		Point corner0; // Initial selection box corner
-		bool active; // Flag whether the tool is active
-		
-		/* Constructors and destructors: */
-		public:
-		static void initClass(Vrui::ToolFactory* baseClass); // Initializes the tool class
-		SelectTool(const Vrui::ToolFactory* factory,const Vrui::ToolInputAssignment& inputAssignment);
-		virtual ~SelectTool(void);
-		
-		/* Methods from Vrui::Tool: */
-		virtual const Vrui::ToolFactory* getFactory(void) const;
-		virtual void buttonCallback(int buttonSlotIndex,Vrui::InputDevice::ButtonCallbackData* cbData);
-		virtual void frame(void);
-		
-		/* Methods from SketchPadTool: */
-		virtual void glRenderAction(GLContextData& contextData) const;
-		};
+	class SketchPadTool; // Base class for tools belonging to the SketchPad application
+	class SketchTool; // Class for sketching tools
+	class EraseTool; // Class for erasing tools
+	class SelectTool; // Class for selecting tools
 	
 	/* Elements: */
 	private:
@@ -226,7 +103,7 @@ class SketchPad:public Vrui::Application
 	SketchPad(int& argc,char**& argv);
 	virtual ~SketchPad(void);
 	
-	/* Methods from Vrui::Application: */
+	/* Methods from class Vrui::Application: */
 	virtual void toolCreationCallback(Vrui::ToolManager::ToolCreationCallbackData* cbData);
 	virtual void toolDestructionCallback(Vrui::ToolManager::ToolDestructionCallbackData* cbData);
 	virtual void frame(void);

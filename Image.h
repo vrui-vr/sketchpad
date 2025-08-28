@@ -52,9 +52,7 @@ class Image:public SketchObject
 	/* Methods from SketchObject: */
 	public:
 	virtual unsigned int getTypeCode(void) const;
-	virtual bool pick(PickResult& result) const;
-	virtual bool pick(const Point& center,Scalar radius2) const;
-	virtual SnapResult snap(const Point& center,Scalar radius2) const;	
+	virtual bool pick(PickResult& result);
 	virtual SketchObject* clone(void) const;
 	virtual void applySettings(const SketchSettings& settings);
 	virtual void transform(const Transformation& transform);
@@ -80,7 +78,7 @@ class ImageFactory:public SketchObjectFactory
 	
 	/* Constructors and destructors: */
 	public:
-	ImageFactory(const SketchSettings& sSettings,const char* imageFileName,IO::File& imageFile);
+	ImageFactory(SketchSettings& sSettings,const char* imageFileName,IO::File& imageFile);
 	virtual ~ImageFactory(void);
 	
 	/* Methods from SketchObjectFactory: */

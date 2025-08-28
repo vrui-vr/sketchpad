@@ -69,7 +69,6 @@ class SketchSettings:public SketchObjectContainer
 	/* Methods from SketchObjectContainer: */
 	virtual void insertAfter(SketchObject* pred,SketchObject* newObject);
 	virtual void remove(SketchObject* object);
-	virtual SketchObject::SnapResult snap(const Point& center,Scalar radius2) const;
 	
 	/* Methods: */
 	const Color& getColor(void) const // Returns the current color
@@ -127,10 +126,12 @@ class SketchSettings:public SketchObjectContainer
 	void setHighlightColor(const Color& newHighlightColor); // Sets the highlight color
 	void setLingerSize(Scalar newLingerSize); // Sets the current linger detection neighborhood size
 	void setLingerTime(double newLingerTime); // Sets the lingering detection time threshold
-	SketchObject* pickTop(const Point& pos) // Shortcut for pickTop method
+	SketchObject::PickResult pick(const Point& pos) // Shortcut for SketchObjectContainer's pick method
 		{
-		return SketchObjectContainer::pickTop(pos,Math::sqr(pickRadius));
+		return SketchObjectContainer::pick(pos,pickRadius);
 		}
+	Point snap(const Point& pos); // Snaps the given point and returns the adjusted point
+	SketchObject::PickResult pickSelected(const Point& pos); // Picks only currently selected objects
 	bool isSelected(SketchObject* object) const // Returns true if the given sketch object is currently selected
 		{
 		return selectedObjects.isEntry(object);
@@ -154,7 +155,6 @@ class SketchSettings:public SketchObjectContainer
 	void selectionToBack(void); // Sends selected objects to the back of the sketch environment
 	void selectionToFront(void); // Sends selected objects to the front of the sketch environment
 	void deleteSelection(void); // Deletes all selected objects
-	bool isSelectedPicked(const Point& pos) const; // Returns true if a selected object is picked by a tool at the given position
 	void transformSelectedObjects(const Transformation& transform); // Transforms all selected objects by the given transformation
 	void snapSelectedObjectsToGrid(void); // Snaps all selected objects to the drawing grid
 	void drawSelectedObjects(const Transformation& transform,GLContextData& contextData) const; // Draws selected objects with the given transformation

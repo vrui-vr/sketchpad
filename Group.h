@@ -36,12 +36,10 @@ class Group:public SketchObject,public SketchObjectContainer
 	private:
 	static unsigned int typeCode; // The group class's type code
 	
-	/* Methods from SketchObject: */
+	/* Methods from class SketchObject: */
 	public:
 	virtual unsigned int getTypeCode(void) const;
-	virtual bool pick(PickResult& result) const;
-	virtual bool pick(const Point& center,Scalar radius2) const;
-	virtual SnapResult snap(const Point& center,Scalar radius2) const;	
+	virtual bool pick(PickResult& result);
 	virtual SketchObject* clone(void) const;
 	virtual void applySettings(const SketchSettings& settings);
 	virtual void transform(const Transformation& transform);
@@ -52,7 +50,7 @@ class Group:public SketchObject,public SketchObjectContainer
 	virtual void glRenderAction(GLContextData& contextData) const;
 	virtual void glRenderActionHighlight(Scalar cycle,GLContextData& contextData) const;
 	
-	/* Methods from SketchObjectContainer: */
+	/* Methods from class SketchObjectContainer: */
 	virtual void append(SketchObject* newObject);
 	virtual void insertAfter(SketchObject* pred,SketchObject* newObject);
 	

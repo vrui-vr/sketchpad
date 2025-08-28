@@ -43,46 +43,18 @@ unsigned int Group::getTypeCode(void) const
 	return typeCode;
 	}
 
-bool Group::pick(SketchObject::PickResult& result) const
+bool Group::pick(SketchObject::PickResult& result)
 	{
 	/* Pick all members of the group: */
 	bool childPicked=false;
-	for(SketchObjectList::const_iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
+	for(SketchObjectList::iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
 		childPicked=soIt->pick(result)||childPicked;
 	
 	/* Set the group as the picked object if one of the members was picked: */
 	if(childPicked)
-		result.pick=this;
+		result.pickedObject=this;
 	
 	return childPicked;
-	}
-
-bool Group::pick(const Point& center,Scalar radius2) const
-	{
-	/* Pick all members of the group: */
-	for(SketchObjectList::const_iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
-		if(soIt->pick(center,radius2))
-			return true;
-	
-	return false;
-	}
-
-SketchObject::SnapResult Group::snap(const Point& center,Scalar radius2) const
-	{
-	/* Initialize the snap result: */
-	SnapResult result;
-	result.valid=false;
-	result.dist2=radius2;
-	
-	/* Snap against all members of the group: */
-	for(SketchObjectList::const_iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
-		{
-		SnapResult sr=soIt->snap(center,result.dist2);
-		if(sr.valid)
-			result=sr;
-		}
-	
-	return result;
 	}
 
 SketchObject* Group::clone(void) const
@@ -128,6 +100,8 @@ void Group::snapToGrid(Scalar gridSize)
 
 void Group::rubout(const Capsule& eraser,SketchObjectContainer& container)
 	{
+	#if 0
+	
 	/* Rub out all members of the group whose bounding boxes touch the eraser capsule: */
 	SketchObjectList::iterator soIt=sketchObjects.begin();
 	while(soIt!=sketchObjects.end())
@@ -156,6 +130,8 @@ void Group::rubout(const Capsule& eraser,SketchObjectContainer& container)
 		for(SketchObjectList::iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
 			boundingBox.addBox(soIt->getBoundingBox());
 		}
+	
+	#endif
 	}
 
 void Group::write(IO::File& file,const SketchObjectCreator& creator) const

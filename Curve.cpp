@@ -222,164 +222,26 @@ unsigned int Curve::getTypeCode(void) const
 	return typeCode;
 	}
 
-bool Curve::pick(SketchObject::PickResult& result) const
+bool Curve::pick(SketchObject::PickResult& result)
 	{
 	bool picked=false;
 	
 	/* Check the beginning vertex against the given sphere: */
 	std::vector<Point>::const_iterator p0It=points.begin();
-	Scalar dist2=Geometry::sqrDist(result.position,*p0It)/Math::sqr(Scalar(1.5)); // Reduce pick distance for a curve's end point
-	picked=result.update(dist2,this,*p0It)||picked;
+	picked=result.update(this,0,*p0It)||picked;
 	
 	/* Check every curve segment against the given sphere: */
 	std::vector<Point>::const_iterator lastIt=points.end()-1;
 	for(std::vector<Point>::const_iterator p1It=p0It+1;p1It!=points.end();p0It=p1It,++p1It)
 		{
 		/* Check the segment's end vertex against the given sphere: */
-		Scalar dist2=Geometry::sqrDist(result.center,*p1It);
-		if(p1It==lastIt)
-			dist2/=Math::sqr(Scalar(1.5)); // Reduce pick distance for a curve's end point
-		picked=result.update(dist2,this,*p1It)||picked;
+		picked=result.update(this,p1It==lastIt?0:1,*p1It)||picked;
 		
 		/* Check the line segment against the given sphere: */
-		Vector segDir=*p1It-*p0It;
-		Scalar segLength2=segDir.sqr();
-		if(segLength2>Scalar(0))
-			{
-			/* Check if the sphere's center is inside the segment's extents: */
-			Point mid=Geometry::mid(*p0It,*p1It);
-			Vector mc=result.center-mid;
-			Scalar y=segDir*mc;
-			if(Scalar(2)*Math::abs(y)<segLength2)
-				{
-				/* Check the distance from the sphere's center to the segment: */
-				Scalar mc2=mc.sqr();
-				Scalar dist2=mc2-Math::sqr(y);
-				Point pp=Geometry::addScaled(mid,segDir,y/segLength2);
-				picked=result.update(dist2,this,pp)||picked;
-				}
-			}
+		picked=result.update(this,*p0It,*p1It)||picked;
 		}
 	
-	return false;
-	}
-
-bool Curve::pick(const Point& center,Scalar radius2) const
-	{
-	/* Check the beginning vertex against the given sphere: */
-	std::vector<Point>::const_iterator p0It=points.begin();
-	if(Geometry::sqrDist(center,*p0It)<=radius2)
-		return true;
-	
-	/* Check every curve segment against the given sphere: */
-	for(std::vector<Point>::const_iterator p1It=p0It+1;p1It!=points.end();p0It=p1It,++p1It)
-		{
-		/* Check the segment's end vertex against the given sphere: */
-		if(Geometry::sqrDist(center,*p1It)<=radius2)
-			return true;
-		
-		/* Check the line segment against the given point: */
-		Vector segDir=*p1It-*p0It;
-		Scalar segLength2=segDir.sqr();
-		if(segLength2>=radius2)
-			{
-			/* Check if the point is inside the segment's extents: */
-			Vector cp0=center-*p0It;
-			Scalar y=segDir*cp0;
-			Scalar y2=Math::sqr(y)/segLength2;
-			if(y>=Scalar(0)&&y2<=segLength2)
-				{
-				/* Check the distance from the given circle's center to the segment's line: */
-				Scalar dist2=Geometry::sqr(cp0)-y2;
-				if(dist2<=radius2)
-					return true;
-				}
-			}
-		}
-	
-	return false;
-	}
-
-SketchObject::SnapResult Curve::snap(const Point& center,Scalar radius2) const
-	{
-	/* Initialize the snap result: */
-	SnapResult result;
-	result.valid=false;
-	result.dist2=radius2;
-	
-	/* Check the beginning vertex against the given sphere: */
-	std::vector<Point>::const_iterator p0It=points.begin();
-	Scalar p0Dist2=Geometry::sqrDist(center,*p0It);
-	if(result.dist2>p0Dist2)
-		{
-		/* Snap to the curve's beginning vertex: */
-		result.valid=true;
-		result.dist2=p0Dist2;
-		result.position=*p0It;
-		result.normal=center-*p0It;
-		result.normal/=Math::sqrt(result.dist2);
-		
-		/* Preferentially snap to the beginning vertex: */
-		return result;
-		}
-	
-	/* Check the ending vertex against the given sphere: */
-	Scalar p1Dist2=Geometry::sqrDist(center,points.back());
-	if(result.dist2>p1Dist2)
-		{
-		/* Snap to the curve's ending vertex: */
-		result.valid=true;
-		result.dist2=p1Dist2;
-		result.position=points.back();
-		result.normal=center-points.back();
-		result.normal/=Math::sqrt(result.dist2);
-		
-		/* Preferentially snap to the ending vertex: */
-		return result;
-		}
-	
-	/* Check every curve segment against the given sphere: */
-	for(std::vector<Point>::const_iterator p1It=p0It+1;p1It!=points.end();p0It=p1It,++p1It)
-		{
-		/* Check the segment's end vertex against the given sphere: */
-		Scalar p1Dist2=Geometry::sqrDist(center,*p1It);
-		if(result.dist2>p1Dist2)
-			{
-			/* Snap to the segment's end vertex: */
-			result.valid=true;
-			result.dist2=p1Dist2;
-			result.position=*p1It;
-			result.normal=center-*p1It;
-			result.normal/=Math::sqrt(p1Dist2);
-			}
-		
-		/* Check the line segment against the given point: */
-		Point::Vector segDir=*p1It-*p0It;
-		Scalar segLength2=segDir.sqr();
-		if(segLength2>=radius2)
-			{
-			/* Check if the point is inside the segment's extents: */
-			Point::Vector cp0=center-*p0It;
-			Scalar y=segDir*cp0;
-			Scalar y2=Math::sqr(y)/segLength2;
-			if(y>=Scalar(0)&&y2<=segLength2)
-				{
-				/* Check the distance from the given circle's center to the segment's line: */
-				Scalar segDist2=Geometry::sqr(cp0)-y2;
-				if(result.dist2>segDist2)
-					{
-					/* Snap to the segment: */
-					result.valid=true;
-					result.dist2=segDist2;
-					result.position=*p0It+segDir*(y/segLength2);
-					result.normal=center-result.position;
-					result.normal/=Math::sqrt(segDist2);
-					}
-				}
-			}
-		}
-	
-	return result;
+	return picked;
 	}
 
 SketchObject* Curve::clone(void) const
@@ -639,7 +501,7 @@ void Curve::resetGLState(GLContextData& contextData) const
 Methods of class CurveFactory:
 *****************************/
 
-CurveFactory::CurveFactory(const SketchSettings& sSettings)
+CurveFactory::CurveFactory(SketchSettings& sSettings)
 	:SketchObjectFactory(sSettings),
 	 current(0),
 	 lineMode(false)
@@ -683,17 +545,13 @@ void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood
 	/* Check if the factory is already in line mode: */
 	if(lineMode)
 		{
+		Point end=pos;
+		
+		/* Snap the line's end point if the tool is lingering: */
 		if(startLingering)
-			{
-			/* Snap the line's end point against nearby sketch objects: */
-			SketchObject::SnapResult sr=settings.snap(pos,Math::sqr(settings.getPickRadius()));
-			if(sr.valid)
-				current->points.back()=sr.position;
-			else
-				current->points.back()=pos;
-			}
-		else
-			current->points.back()=pos;
+			end=settings.snap(pos);
+			
+		current->points.back()=end;
 		}
 	else if(startLingering)
 		{
@@ -721,9 +579,7 @@ void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood
 			if(firstNeighborhood)
 				{
 				/* Snap the first curve point to nearby sketch objects: */
-				SketchObject::SnapResult sr=settings.snap(first,Math::sqr(settings.getPickRadius()));
-				if(sr.valid)
-					first=sr.position;
+				first=settings.snap(first);
 				}
 			
 			/* Create the line: */

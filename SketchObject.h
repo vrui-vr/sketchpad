@@ -50,14 +50,16 @@ class SketchObject
 		/* Elements: */
 		public:
 		Point center; // Pick sphere's center
-		Scalar radius2; // Pick sphere's squared radius, or squared distance to currently picked point
+		Scalar radius2; // Pick sphere's squared radius
 		SketchObject* pickedObject; // Currently picked object; ==0 if no object has been picked
+		unsigned int pickedPriority; // Priority of the currently picked object; smaller number = higher priority
+		Scalar pickedDist2; // Squared distance from pick sphere's center to currently picked object
 		Point pickedPoint; // Picked position on currently picked object
 		
 		/* Constructors and destructors: */
 		PickResult(const Point& sCenter,Scalar sRadius) // Creates a pick query for the given center point and radius
 			:center(sCenter),radius2(Math::sqr(sRadius)),
-			 pickedObject(0)
+			 pickedObject(0),pickedPriority(~0U),pickedDist2(radius2)
 			{
 			}
 		
@@ -66,28 +68,70 @@ class SketchObject
 			{
 			return pickedObject!=0;
 			}
-		bool update(Scalar dist2,SketchObject* object,const Point& point) // Potentially updates the pick result from picking the given object; returns true if pick result changed
+		bool update(SketchObject* object,unsigned int priority,Scalar dist2,const Point& point) // Potentially updates the pick result from picking the given object; returns true if pick result changed
 			{
-			bool pickChanged=radius2>dist2;
+			bool pickChanged=(priority<pickedPriority&&dist2<radius2)||(priority==pickedPriority&&dist2<pickedDist2);
 			if(pickChanged)
 				{
-				radius2=dist2;
+				/* Update the pick result: */
 				pickedObject=object;
+				pickedPriority=priority;
+				pickedDist2=dist2;
 				pickedPoint=point;
 				}
 			
 			return pickChanged;
 			}
-		};
-	
-	struct SnapResult // Structure to return the result of a snap query
-		{
-		/* Elements: */
-		public:
-		bool valid; // Flag whether the snap request succeeded
-		Scalar dist2; // Squared snap distance
-		Point position; // Snap position
-		Vector normal; // Normal vector at the snap position
+		bool update(SketchObject* object,unsigned int priority,const Point& point) // Ditto; calculates distance from pick sphere's center to given point
+			{
+			Scalar dist2=Geometry::sqrDist(center,point);
+			bool pickChanged=(priority<pickedPriority&&dist2<radius2)||(priority==pickedPriority&&dist2<pickedDist2);
+			if(pickChanged)
+				{
+				/* Update the pick result: */
+				pickedObject=object;
+				pickedPriority=priority;
+				pickedDist2=dist2;
+				pickedPoint=point;
+				}
+			
+			return pickChanged;
+			}
+		bool update(SketchObject* object,const Point& start,const Point& end) // Potentially updates the pick result from picking a line segment; returns true if pick result changed
+			{
+			bool pickChanged=false;
+			
+			/* Bail out if a vertex has already been picked: */
+			if(pickedPriority>=1U)
+				{
+				/* Check the line segment: */
+				Vector dir=end-start;
+				Scalar dir2=dir.sqr();
+				if(dir2>Scalar(0))
+					{
+					/* Check if the sphere's center is inside the line segment's extents: */
+					Point mid=Geometry::mid(start,end);
+					Vector mc=center-mid;
+					Scalar y=dir*mc;
+					if(Scalar(2)*Math::abs(y)<dir2)
+						{
+						/* Check if this line segment is closer than the currently picked object: */
+						Scalar dist2=mc.sqr()-Math::sqr(y)/dir2;
+						if((1U<pickedPriority&&dist2<radius2)||(1U==pickedPriority&&dist2<pickedDist2))
+							{
+							/* Update the pick result: */
+							pickedObject=object;
+							pickedPriority=1U;
+							pickedDist2=dist2;
+							pickedPoint=Geometry::addScaled(mid,dir,y/dir2);
+							pickChanged=true;
+							}
+						}
+					}
+				}
+			
+			return pickChanged;
+			}
 		};
 	
 	/* Elements: */
@@ -111,9 +155,7 @@ class SketchObject
 		return boundingBox;
 		}
 	virtual unsigned int getTypeCode(void) const =0; // Returns an integer uniquely identifying a sketching object class
-	virtual bool pick(PickResult& result) const =0; // Picks this object with the given pick query; updates query object and returns true if object is picked
-	virtual bool pick(const Point& center,Scalar radius2) const =0; // Returns true if the sphere of the given center and radius touches the sketch object
-	virtual SnapResult snap(const Point& center,Scalar radius2) const =0; // Snaps the given point to the object, moving it by at most the given radius
+	virtual bool pick(PickResult& result) =0; // Picks this object with the given pick query; updates query object and returns true if object is picked
 	virtual SketchObject* clone(void) const =0; // Creates an identical copy of the sketch object
 	virtual void applySettings(const SketchSettings& settings) =0; // Applies settings from the given settings object to the sketch object
 	virtual void transform(const Transformation& transform) =0; // Transforms the sketch object with the given transformation
@@ -131,12 +173,12 @@ class SketchObjectFactory
 	{
 	/* Elements: */
 	protected:
-	const SketchSettings& settings; // Settings to use for new sketch objects
+	SketchSettings& settings; // Settings to use for new sketch objects
 	unsigned int settingsVersion; // Version number of sketch settings of currently created object
 	
 	/* Constructors and destructors: */
 	public:
-	SketchObjectFactory(const SketchSettings& sSettings)
+	SketchObjectFactory(SketchSettings& sSettings)
 		:settings(sSettings),
 		 settingsVersion(0U)
 		{

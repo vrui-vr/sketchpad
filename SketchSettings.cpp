@@ -71,43 +71,6 @@ void SketchSettings::remove(SketchObject* object)
 	SketchObjectContainer::remove(object);
 	}
 
-SketchObject::SnapResult SketchSettings::snap(const Point& center,Scalar radius2) const
-	{
-	/* Call the base class method: */
-	SketchObject::SnapResult result=SketchObjectContainer::snap(center,radius2);
-	
-	/* If no objects were snapped, try snapping against the drawing grid: */
-	if(!result.valid&&gridEnabled)
-		{
-		/* Snap individually in x and y: */
-		result.position=center;
-		result.dist2=Scalar(0);
-		for(int i=0;i<2;++i)
-			{
-			/* Find the nearest grid line: */
-			Scalar grid=Math::floor(center[i]/gridSize+Scalar(0.5))*gridSize;
-			
-			/* Check if the grid line is close enough: */
-			Scalar dist2=Math::sqr(center[i]-grid);
-			if(dist2<=radius2)
-				{
-				result.position[i]=grid;
-				result.dist2+=dist2;
-				result.valid=true;
-				}
-			}
-		
-		if(result.valid)
-			{
-			/* Calculate the snap normal vector: */
-			result.normal=center-result.position;
-			result.normal/=Math::sqrt(result.dist2);
-			}
-		}
-	
-	return result;
-	}
-
 bool SketchSettings::setHighlightCycle(double applicationTime)
 	{
 	/* Calculate the new cycle value in [-1, 1]: */
@@ -169,13 +132,59 @@ void SketchSettings::setLingerTime(double newLingerTime)
 	lingerTime=newLingerTime;
 	}
 
+Point SketchSettings::snap(const Point& pos)
+	{
+	/* Pick all objects: */
+	SketchObject::PickResult pickResult=SketchObjectContainer::pick(pos,pickRadius);
+	if(pickResult.isValid())
+		{
+		/* Return the picked point: */
+		return pickResult.pickedPoint;
+		}
+	else if(gridEnabled)
+		{
+		/* Snap individually in x and y: */
+		Point result=pos;
+		for(int i=0;i<2;++i)
+			{
+			/* Find the nearest grid line: */
+			Scalar grid=Math::floor(pos[i]/gridSize+Scalar(0.5))*gridSize;
+			
+			/* Check if the grid line is close enough: */
+			if(Math::abs(pos[i]-grid)<pickRadius)
+				result[i]=grid;
+			}
+		return result;
+		}
+	else
+		{
+		/* Return the given position: */
+		return pos;
+		}
+	}
+
+SketchObject::PickResult SketchSettings::pickSelected(const Point& pos)
+	{
+	/* Create a pick result: */
+	SketchObject::PickResult result(pos,pickRadius);
+	
+	/* Pick the selected objects: */
+	for(SketchObjectSet::Iterator ssoIt=selectedObjects.begin();!ssoIt.isFinished();++ssoIt)
+		ssoIt->getSource()->pick(result);
+	
+	return result;
+	}
+
 void SketchSettings::select(const Point& pos)
 	{
-	/* Check every object against the picking sphere: */
-	Scalar radius2=Math::sqr(pickRadius);
+	/* Pick an object at the given position: */
+	SketchObject::PickResult pickResult(pos,pickRadius);
 	for(SketchObjectList::iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
-		if(soIt->pick(pos,radius2))
-			selectedObjects.setEntry(&*soIt);
+		soIt->pick(pickResult);
+	
+	/* Select a picked object: */
+	if(pickResult.isValid())
+		selectedObjects.setEntry(pickResult.pickedObject);
 	}
 
 void SketchSettings::select(const Box& box)
@@ -317,17 +326,6 @@ void SketchSettings::deleteSelection(void)
 	
 	/* Clear the selection: */
 	selectedObjects.clear();
-	}
-
-bool SketchSettings::isSelectedPicked(const Point& pos) const
-	{
-	/* Check every selected object against the picking sphere: */
-	Scalar radius2=Math::sqr(pickRadius);
-	bool picked=false;
-	for(SketchObjectSet::ConstIterator ssoIt=selectedObjects.begin();!(picked||ssoIt.isFinished());++ssoIt)
-		picked=ssoIt->getSource()->pick(pos,radius2);
-	
-	return picked;
 	}
 
 void SketchSettings::transformSelectedObjects(const Transformation& transform)

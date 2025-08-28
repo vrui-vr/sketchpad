@@ -75,55 +75,42 @@ unsigned int Image::getTypeCode(void) const
 	return typeCode;
 	}
 
-bool Image::pick(SketchObject::PickResult& result) const
+bool Image::pick(SketchObject::PickResult& result)
 	{
-	/* Transform the pick sphere to image space: */
-	Point imgCenter=imageTransform.inverseTransform(center);
+	bool picked=false;
 	
-	/* Calculate the sphere center's distance from the image's domain: */
+	/* Calculate the image's corner points and pick them: */
+	Point corners[4];
 	const Images::BaseImage& image=textureSet->getTexture(imageKey).getImage();
-	Scalar dist2(0);
-	Point imgPick=imgCenter;
-	for(int i=0;i<2;++i)
+	for(int i=0;i<4;++i)
 		{
-		if(imgCenter[i]<Scalar(0))
-			{
-			dist2+=Math::sqr(imgCenter[i]-Scalar(0));
-			imgPick[i]=Scalar(0);
-			}
-		else if(imgCenter[i]>Scalar(image.getSize(i)))
-			{
-			dist2+=Math::sqr(imgCenter[i]-Scalar(image.getSize(i)));
-			imgPick[i]=Scalar(image.getSize(i));
-			}
+		/* Calculate the corner point in image space: */
+		for(int j=0;j<2;++j)
+			corners[i][j]=Scalar((i&(1<<j))!=0?image.getSize(j):0);
+		corners[i][2]=Scalar(0);
+		
+		/* Transform the corner point to sketch space: */
+		corners[i]=imageTransform.transform(corners[i]);
+		
+		/* Pick the corner point: */
+		picked=result.update(this,0U,corners[i])||picked;
 		}
 	
-	/* Transform the pick distance and the picked point back to sketch space: */
-	return result.update(dist2*Math::sqr(transform.getScaling()),this,transform.transform(imgPick));
-	}
-
-bool Image::pick(const Point& center,Scalar radius2) const
-	{
-	/* Check if the transformed sphere touches the image's rectangle: */
-	Point imgCenter=imageTransform.inverseTransform(center);
-	const Images::BaseImage& image=textureSet->getTexture(imageKey).getImage();
-	Scalar dist2=Scalar(0);
-	for(int i=0;i<2;++i)
-		{
-		if(imgCenter[i]<Scalar(0))
-			dist2+=Math::sqr(Scalar(0)-imgCenter[i]);
-		else if(imgCenter[i]>Scalar(image.getSize(i)))
-			dist2+=Math::sqr(imgCenter[i]-Scalar(image.getSize(i)));
-		}
-	return dist2*Math::sqr(imageTransform.getScaling())<=radius2;
-	}
-
-SketchObject::SnapResult Image::snap(const Point& center,Scalar radius2) const
-	{
-	/* Images don't snap; return an invalid snap result: */
-	SnapResult result;
-	result.valid=false;
-	return result;
+	/* Pick the image's edges: */
+	picked=result.update(this,corners[0],corners[1])||picked;
+	picked=result.update(this,corners[2],corners[3])||picked;
+	picked=result.update(this,corners[0],corners[2])||picked;
+	picked=result.update(this,corners[1],corners[3])||picked;
+	
+	/* Pick the image's interior: */
+	Point imgCenter=imageTransform.inverseTransform(result.center);
+	bool centerInside=true;
+	for(int i=0;i<2&&centerInside;++i)
+		centerInside=Scalar(0)<=imgCenter[i]&&imgCenter[i]<Scalar(image.getSize(i));
+	if(centerInside)
+		picked=result.update(this,2,Scalar(0),result.center)||picked;
+	
+	return picked;
 	}
 
 SketchObject* Image::clone(void) const
@@ -248,6 +235,7 @@ void Image::glRenderAction(GLContextData& contextData) const
 	const Images::BaseImage& image=texture.getImage();
 	const GLfloat* texMin=texture.getTexCoordMin();
 	const GLfloat* texMax=texture.getTexCoordMax();
+	glColor4f(1.0f,1.0f,1.0f,1.0f);
 	glBegin(GL_QUADS);
 	glTexCoord2f(texMin[0],texMin[1]);
 	glVertex2i(0,0);
@@ -314,7 +302,7 @@ void Image::resetGLState(GLContextData& contextData) const
 Methods of class ImageFactory:
 *****************************/
 
-ImageFactory::ImageFactory(const SketchSettings& sSettings,const char* imageFileName,IO::File& imageFile)
+ImageFactory::ImageFactory(SketchSettings& sSettings,const char* imageFileName,IO::File& imageFile)
 	:SketchObjectFactory(sSettings),
 	 next(new Image),
 	 current(0),
