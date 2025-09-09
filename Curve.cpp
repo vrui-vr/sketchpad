@@ -58,6 +58,11 @@ unsigned int Curve::typeCode=0;
 Methods of class Curve:
 **********************/
 
+Curve::Curve(void)
+	:version(0)
+	{
+	}
+
 unsigned int Curve::getTypeCode(void) const
 	{
 	return typeCode;
@@ -115,6 +120,8 @@ void Curve::transform(const Transformation& transform)
 		*pIt=transform.transform(*pIt);
 		boundingBox.addPoint(*pIt);
 		}
+	
+	++version;
 	}
 
 namespace {
@@ -151,6 +158,8 @@ void Curve::snapToGrid(Scalar gridSize)
 			}
 		}
 	std::swap(points,newPoints);
+	
+	++version;
 	}
 
 void Curve::rubout(const Capsule& eraser,SketchObjectContainer& container)
@@ -247,6 +256,8 @@ void Curve::rubout(const Capsule& eraser,SketchObjectContainer& container)
 		/* Store the leftover curve in this curve object: */
 		boundingBox=outsideBox;
 		std::swap(points,outside);
+		
+		++version;
 		}
 	else
 		{
@@ -297,6 +308,8 @@ void Curve::read(IO::File& file,SketchObjectCreator& creator)
 	/* Swap the old and new bounding box and point vector: */
 	boundingBox=newBoundingBox;
 	std::swap(points,newPoints);
+	
+	++version;
 	}
 
 void Curve::glRenderAction(RenderState& renderState) const
@@ -350,6 +363,7 @@ void CurveFactory::buttonDown(const Point& pos)
 	/* Append the first curve point: */
 	current->points.push_back(pos);
 	current->boundingBox.addPoint(pos);
+	++current->version;
 	
 	/* Reset the curve suffix: */
 	curveLast=pos;
@@ -374,6 +388,7 @@ void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood
 			end=settings.snap(pos);
 			
 		current->points.back()=end;
+		++current->version;
 		}
 	else if(startLingering)
 		{
@@ -408,6 +423,7 @@ void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood
 			line->points.push_back(first);
 			line->boundingBox.addPoint(first);
 			line->points.push_back(pos);
+			++line->version;
 			
 			/* Go to line mode: */
 			delete current;
@@ -422,6 +438,7 @@ void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood
 			current->points.push_back(pos);
 		else
 			current->points.back()=pos;
+		++current->version;
 		points.push_back(pos);
 		
 		/* Check if the current curve suffix is well-represented by a line segment: */
@@ -449,6 +466,7 @@ void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood
 			current->points.back()=curveLast;
 			current->boundingBox.addPoint(curveLast);
 			current->points.push_back(pos);
+			++current->version;
 			points.clear();
 			points.push_back(pos);
 			}

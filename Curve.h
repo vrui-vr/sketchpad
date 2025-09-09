@@ -40,9 +40,13 @@ class Curve:public SketchObject
 	Color color; // Curve's color
 	float lineWidth; // Curve's cosmetic line width
 	std::vector<Point> points; // Vector of curve points
+	unsigned int version; // Version number of curve point list
+	
+	/* Constructors and destructors: */
+	public:
+	Curve(void); // Creates an empty curve with undefined parameters
 	
 	/* Methods from SketchObject: */
-	public:
 	virtual unsigned int getTypeCode(void) const;
 	virtual bool pick(PickResult& result);
 	virtual SketchObject* clone(void) const;
