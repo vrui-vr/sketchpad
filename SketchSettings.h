@@ -32,7 +32,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchObjectContainer.h"
 
 /* Forward declarations: */
-class Group;
+class RenderState;
 
 class SketchSettings:public SketchObjectContainer
 	{
@@ -157,10 +157,10 @@ class SketchSettings:public SketchObjectContainer
 	void deleteSelection(void); // Deletes all selected objects
 	void transformSelectedObjects(const Transformation& transform); // Transforms all selected objects by the given transformation
 	void snapSelectedObjectsToGrid(void); // Snaps all selected objects to the drawing grid
-	void drawSelectedObjects(const Transformation& transform,GLContextData& contextData) const; // Draws selected objects with the given transformation
-	void highlightSelectedObjects(const Transformation& transform,GLContextData& contextData) const; // Highlights selected objects with the given transformation
-	void glRenderAction(const Box& viewBox,GLContextData& contextData) const; // Draws the sketching environment inside the given view bounding box
-	void renderGrid(const Box& viewBox,GLContextData& contextData) const; // Renders a drawing grid
+	void drawSelectedObjects(const Transformation& transform,RenderState& renderState) const; // Draws selected objects with the given transformation
+	void highlightSelectedObjects(const Transformation& transform,RenderState& renderState) const; // Highlights selected objects with the given transformation
+	void glRenderAction(const Box& viewBox,RenderState& renderState) const; // Draws the sketching environment inside the given view bounding box
+	void renderGrid(const Box& viewBox,RenderState& renderState) const; // Renders a drawing grid
 	};
 
 #endif

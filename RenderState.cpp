@@ -1,7 +1,6 @@
 /***********************************************************************
-SketchObject - Base class for sketching objects for a simple sketching
-application.
-Copyright (c) 2016-2025 Oliver Kreylos
+RenderState - Class holding state while rendering sketch objects.
+Copyright (c) 2025 Oliver Kreylos
 
 This file is part of the SketchPad vector drawing package.
 
@@ -21,20 +20,40 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 02111-1307 USA
 ***********************************************************************/
 
-#include "SketchObject.h"
+#include "RenderState.h"
 
-/*****************************
-Methods of class SketchObject:
-*****************************/
+/****************************
+Methods of class RenderState:
+****************************/
 
-SketchObject::~SketchObject(void)
+RenderState::RenderState(GLContextData& sContextData)
+	:contextData(sContextData),
+	 activeRenderer(0),activeDataItem(0)
 	{
 	}
 
-/************************************
-Methods of class SketchObjectFactory:
-************************************/
-
-SketchObjectFactory::~SketchObjectFactory(void)
+RenderState::~RenderState(void)
 	{
+	/* Deactivate the current renderer: */
+	if(activeRenderer!=0)
+		activeRenderer->deactivate(activeDataItem);
+	}
+
+bool RenderState::setRenderer(const Renderer* newRenderer)
+	{
+	bool result=activeRenderer!=newRenderer;
+	if(result)
+		{
+		/* Deactivate the current renderer: */
+		if(activeRenderer!=0)
+			activeRenderer->deactivate(activeDataItem);
+		activeDataItem=0;
+		
+		/* Set and activate the new renderer: */
+		activeRenderer=newRenderer;
+		if(activeRenderer!=0)
+			activeDataItem=activeRenderer->activate(contextData);
+		}
+	
+	return result;
 	}

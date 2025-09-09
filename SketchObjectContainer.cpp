@@ -26,28 +26,18 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 Methods of class SketchObjectContainer:
 **************************************/
 
-void SketchObjectContainer::drawObjects(GLContextData& contextData) const
+void SketchObjectContainer::drawObjects(RenderState& renderState) const
 	{
 	/* Render all sketch objects: */
 	for(SketchObjectList::const_iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
-		{
-		/* Render each sketch object individually, the inefficient way: */
-		soIt->setGLState(contextData);
-		soIt->glRenderAction(contextData);
-		soIt->resetGLState(contextData);
-		}
+		soIt->glRenderAction(renderState);
 	}
 
-void SketchObjectContainer::drawObjectsHighlight(Scalar cycle,GLContextData& contextData) const
+void SketchObjectContainer::drawObjectsHighlight(Scalar cycle,RenderState& renderState) const
 	{
 	/* Highlight all sketch objects: */
 	for(SketchObjectList::const_iterator soIt=sketchObjects.begin();soIt!=sketchObjects.end();++soIt)
-		{
-		/* Render each sketch object individually, the inefficient way: */
-		soIt->setGLState(contextData);
-		soIt->glRenderActionHighlight(cycle,contextData);
-		soIt->resetGLState(contextData);
-		}
+		soIt->glRenderActionHighlight(cycle,renderState);
 	}
 
 SketchObjectContainer::~SketchObjectContainer(void)

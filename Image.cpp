@@ -32,7 +32,9 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GL/GLTransformationWrappers.h>
 #include <Images/ReadImageFile.h>
 
+#include "RenderState.h"
 #include "SketchSettings.h"
+#include "ImageRenderer.h"
 
 /******************************
 Static elements of class Image:
@@ -212,17 +214,13 @@ void Image::read(IO::File& file,SketchObjectCreator& creator)
 	boundingBox.addPoint(imageTransform.transform(Point(0,image.getHeight(),0)));
 	}
 
-void Image::setGLState(GLContextData& contextData) const
+void Image::glRenderAction(RenderState& renderState) const
 	{
-	/* Set up OpenGL state: */
-	glPushAttrib(GL_ENABLE_BIT|GL_TEXTURE_BIT);
-	glEnable(GL_TEXTURE_RECTANGLE_ARB);
-	}
-
-void Image::glRenderAction(GLContextData& contextData) const
-	{
+	/* Select the image renderer: */
+	renderState.setRenderer(ImageRenderer::getTheRenderer());
+	
 	/* Retrieve the texture set's OpenGL state: */
-	Images::TextureSet::GLState* glState=textureSet->getGLState(contextData);
+	Images::TextureSet::GLState* glState=textureSet->getGLState(renderState.contextData);
 	
 	/* Bind the image texture and enable its texture target: */
 	const Images::TextureSet::GLState::Texture& texture=glState->bindTexture(imageKey);
@@ -250,16 +248,19 @@ void Image::glRenderAction(GLContextData& contextData) const
 	glPopMatrix();
 	}
 
-void Image::glRenderActionHighlight(Scalar cycle,GLContextData& contextData) const
+void Image::glRenderActionHighlight(Scalar cycle,RenderState& renderState) const
 	{
+	/* Select the image renderer: */
+	renderState.setRenderer(ImageRenderer::getTheRenderer());
+	
+	/* Retrieve the texture set's OpenGL state: */
+	Images::TextureSet::GLState* glState=textureSet->getGLState(renderState.contextData);
+	
 	/* Calculate a highlight color: */
 	GLfloat highlight[4];
 	for(int i=0;i<3;++i)
 		highlight[i]=cycle>=Scalar(0)?1.0f:0.0f;
 	highlight[3]=float(Math::abs(cycle));
-	
-	/* Retrieve the texture set's OpenGL state: */
-	Images::TextureSet::GLState* glState=textureSet->getGLState(contextData);
 	
 	/* Bind the image texture and enable its texture target: */
 	const Images::TextureSet::GLState::Texture& texture=glState->bindTexture(imageKey);
@@ -289,13 +290,6 @@ void Image::glRenderActionHighlight(Scalar cycle,GLContextData& contextData) con
 	glEnd();
 	
 	glPopMatrix();
-	}
-
-void Image::resetGLState(GLContextData& contextData) const
-	{
-	/* Reset OpenGL state: */
-	glBindTexture(GL_TEXTURE_RECTANGLE_ARB,0);
-	glPopAttrib();
 	}
 
 /*****************************
@@ -413,14 +407,12 @@ SketchObject* ImageFactory::finish(void)
 	return result;
 	}
 
-void ImageFactory::glRenderAction(GLContextData& contextData) const
+void ImageFactory::glRenderAction(RenderState& renderState) const
 	{
 	if(current!=0)
 		{
 		/* Draw the current image at its current size and position: */
-		current->setGLState(contextData);
-		current->glRenderAction(contextData);
-		current->resetGLState(contextData);
+		current->glRenderAction(renderState);
 		
 		glPushAttrib(GL_ENABLE_BIT|GL_POINT_BIT);
 		glPointSize(3.0f);

@@ -33,20 +33,13 @@ class Curve:public SketchObject
 	friend class SketchObjectCreator;
 	friend class CurveFactory;
 	
-	/* Embedded classes: */
-	private:
-	class Renderer; // Helper class to manage the curve rendering shaders
-	
 	/* Elements: */
+	private:
 	static unsigned int typeCode; // The curve class's type code
-	static Renderer renderer; // Static object containing the shader code for curve rendering
 	
 	Color color; // Curve's color
 	float lineWidth; // Curve's cosmetic line width
 	std::vector<Point> points; // Vector of curve points
-	
-	/* Private methods: */
-	void draw(const Color& drawColor,GLContextData& contextData) const; // Draws the curve using the given color
 	
 	/* Methods from SketchObject: */
 	public:
@@ -59,10 +52,8 @@ class Curve:public SketchObject
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container);
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const;
 	virtual void read(IO::File& file,SketchObjectCreator& creator);
-	virtual void setGLState(GLContextData& contextData) const;
-	virtual void glRenderAction(GLContextData& contextData) const;
-	virtual void glRenderActionHighlight(Scalar cycle,GLContextData& contextData) const;
-	virtual void resetGLState(GLContextData& contextData) const;
+	virtual void glRenderAction(RenderState& renderState) const;
+	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const;
 	};
 
 class CurveFactory:public SketchObjectFactory
@@ -85,7 +76,7 @@ class CurveFactory:public SketchObjectFactory
 	virtual void motion(const Point& pos,bool lingering,bool firstNeighborhood);
 	virtual bool buttonUp(const Point& pos);
 	virtual SketchObject* finish(void);
-	virtual void glRenderAction(GLContextData& contextData) const;
+	virtual void glRenderAction(RenderState& renderState) const;
 	};
 
 #endif

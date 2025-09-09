@@ -31,7 +31,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchPad.h"
 
 /* Forward declarations: */
-class GLContextData;
+class RenderState;
 
 class SketchPad::SketchPadTool:public Vrui::Tool,public Vrui::Application::Tool<SketchPad>
 	{
@@ -74,7 +74,7 @@ class SketchPad::SketchPadTool:public Vrui::Tool,public Vrui::Application::Tool<
 	void buttonDown(const Point& pos); // Processes a button-down event at the given position and the current time
 	bool motion(const Point& pos); // Processes a motion event to the given position while the button is pressed at the current time; returns true if the tool actually moved
 	void buttonUp(const Point& pos); // Processes a button-up event at the given position and the current time
-	virtual void glRenderAction(GLContextData& contextData) const =0; // Renders sketch object-related tool state at the end of the application's display method
+	virtual void glRenderAction(RenderState& renderState) const =0; // Renders sketch object-related tool state at the end of the application's display method
 	};
 
 #endif

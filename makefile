@@ -138,12 +138,15 @@ $(DEPDIR)/config: $(DEPDIR)/Configure-End
 # Specify build rules for executables
 ########################################################################
 
-SKETCHPAD_SOURCES = SketchObject.cpp \
+SKETCHPAD_SOURCES = RenderState.cpp \
+                    SketchObject.cpp \
                     SketchObjectList.cpp \
                     SketchObjectContainer.cpp \
                     SketchSettings.cpp \
+                    PolylineRenderer.cpp \
                     Curve.cpp \
                     Group.cpp \
+                    ImageRenderer.cpp \
                     Image.cpp \
                     SketchObjectCreator.cpp \
                     PaintBucket.cpp \

@@ -28,6 +28,8 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Vrui/Vrui.h>
 #include <Vrui/ToolManager.h>
 
+#include "RenderState.h"
+
 /**********************************************
 Static elements of class SketchPad::SelectTool:
 **********************************************/
@@ -160,18 +162,19 @@ void SketchPad::SelectTool::frame(void)
 		}
 	}
 
-void SketchPad::SelectTool::glRenderAction(GLContextData& contextData) const
+void SketchPad::SelectTool::glRenderAction(RenderState& renderState) const
 	{
 	if(isActive())
 		{
 		if(draggedObject!=0)
 			{
 			/* Draw all selected objects at their tentative new positions: */
-			application->settings.drawSelectedObjects(Transformation::translate(dragTrans),contextData);
+			application->settings.drawSelectedObjects(Transformation::translate(dragTrans),renderState);
 			}
 		else 
 			{
 			/* Draw the selection box: */
+			renderState.setRenderer(0);
 			glPushAttrib(GL_ENABLE_BIT|GL_LINE_BIT);
 			glDisable(GL_LIGHTING);
 			glLineWidth(1.0f);

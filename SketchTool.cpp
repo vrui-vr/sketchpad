@@ -168,11 +168,11 @@ void SketchPad::SketchTool::frame(void)
 		}
 	}
 
-void SketchPad::SketchTool::glRenderAction(GLContextData& contextData) const
+void SketchPad::SketchTool::glRenderAction(RenderState& renderState) const
 	{
 	if(sketchFactory!=0)
 		{
 		/* Draw the sketch object factory's state: */
-		sketchFactory->glRenderAction(contextData);
+		sketchFactory->glRenderAction(renderState);
 		}
 	}

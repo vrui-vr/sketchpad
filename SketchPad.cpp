@@ -49,6 +49,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Vrui/ToolManager.h>
 #include <Vrui/DisplayState.h>
 
+#include "RenderState.h"
 #include "SketchObject.h"
 #include "Curve.h"
 #include "Image.h"
@@ -415,8 +416,8 @@ GLMotif::PopupWindow* SketchPad::createPaletteDialog(void)
 	
 	/* Select one of the paint buckets: */
 	selectedPaintBucket=pbs[10];
-	paletteColorSelector->setCurrentColor(GLMotif::Color(defaultColors[10]));
-	settings.setColor(defaultColors[10]);
+	paletteColorSelector->setCurrentColor(GLMotif::Color(defaultColors[0]));
+	settings.setColor(defaultColors[0]);
 	
 	colorBox->manageChild();
 	
@@ -448,7 +449,7 @@ GLMotif::PopupWindow* SketchPad::createPaletteDialog(void)
 
 SketchPad::SketchPad(int& argc,char**& argv)
 	:Vrui::Application(argc,argv),
-	 lineWidth(3.0f),
+	 lineWidth(0.75f),
 	 lingerRadius(Vrui::getUiSize()*Vrui::Scalar(1)),
 	 sketchFactoryType(0),sketchFactoryVersion(0U),nextSketchFactory(0),
 	 mainMenu(0),paletteDialog(0),
@@ -646,15 +647,20 @@ void SketchPad::display(GLContextData& contextData) const
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	glDepthMask(GL_FALSE);
 	
+	{
+	/* Create a rendering state: */
+	RenderState renderState(contextData);
+	
 	/* Draw the sketching environment: */
-	settings.glRenderAction(viewBox,contextData);
+	settings.glRenderAction(viewBox,renderState);
 	
 	/* Draw the current state of all sketch tools: */
 	for(std::vector<SketchPadTool*>::const_iterator sptIt=sketchPadTools.begin();sptIt!=sketchPadTools.end();++sptIt)
-		(*sptIt)->glRenderAction(contextData);
+		(*sptIt)->glRenderAction(renderState);
 	
 	/* Draw the rendering grid: */
-	settings.renderGrid(viewBox,contextData);
+	settings.renderGrid(viewBox,renderState);
+	}
 	
 	/* Return to standard OpenGL state: */
 	glDisable(GL_BLEND);

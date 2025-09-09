@@ -1,7 +1,6 @@
 /***********************************************************************
-SketchObject - Base class for sketching objects for a simple sketching
-application.
-Copyright (c) 2016-2025 Oliver Kreylos
+Renderer - Abstract base class for sketch object renderers.
+Copyright (c) 2025 Oliver Kreylos
 
 This file is part of the SketchPad vector drawing package.
 
@@ -21,20 +20,18 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 02111-1307 USA
 ***********************************************************************/
 
-#include "SketchObject.h"
+#ifndef RENDERER_INCLUDED
+#define RENDERER_INCLUDED
 
-/*****************************
-Methods of class SketchObject:
-*****************************/
+#include <GL/gl.h>
+#include <GL/GLObject.h>
 
-SketchObject::~SketchObject(void)
+class Renderer:public GLObject
 	{
-	}
+	/* New methods: */
+	public:
+	virtual DataItem* activate(GLContextData& contextData) const =0; // Activates the renderer in the given OpenGL context and returns a context state object to be used for subsequent rendering calls
+	virtual void deactivate(DataItem* dataItem) const =0; // Deactivates the renderer in the OpenGL context in which it was previously activated; callee will dispose of context state object
+	};
 
-/************************************
-Methods of class SketchObjectFactory:
-************************************/
-
-SketchObjectFactory::~SketchObjectFactory(void)
-	{
-	}
+#endif

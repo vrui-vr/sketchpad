@@ -171,16 +171,16 @@ void Group::read(IO::File& file,SketchObjectCreator& creator)
 	newSketchObjects.transfer(sketchObjects);
 	}
 
-void Group::glRenderAction(GLContextData& contextData) const
+void Group::glRenderAction(RenderState& renderState) const
 	{
 	/* Draw all members of the group: */
-	drawObjects(contextData);
+	drawObjects(renderState);
 	}
 
-void Group::glRenderActionHighlight(Scalar cycle,GLContextData& contextData) const
+void Group::glRenderActionHighlight(Scalar cycle,RenderState& renderState) const
 	{
 	/* Highlight all members of the group: */
-	drawObjectsHighlight(cycle,contextData);
+	drawObjectsHighlight(cycle,renderState);
 	}
 
 void Group::append(SketchObject* newObject)

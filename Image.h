@@ -60,10 +60,8 @@ class Image:public SketchObject
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container);
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const;
 	virtual void read(IO::File& file,SketchObjectCreator& creator);
-	virtual void setGLState(GLContextData& contextData) const;
-	virtual void glRenderAction(GLContextData& contextData) const;
-	virtual void glRenderActionHighlight(Scalar cycle,GLContextData& contextData) const;
-	virtual void resetGLState(GLContextData& contextData) const;
+	virtual void glRenderAction(RenderState& renderState) const;
+	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const;
 	};
 
 class ImageFactory:public SketchObjectFactory
@@ -86,7 +84,7 @@ class ImageFactory:public SketchObjectFactory
 	virtual void motion(const Point& pos,bool lingering,bool firstNeighborhood);
 	virtual bool buttonUp(const Point& pos);
 	virtual SketchObject* finish(void);
-	virtual void glRenderAction(GLContextData& contextData) const;
+	virtual void glRenderAction(RenderState& renderState) const;
 	
 	/* New methods: */
 	void setOrientation(const Transformation::Rotation& newOrientation); // Updates the base vectors to align the created image; assumed to be orthonormal

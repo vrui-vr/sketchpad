@@ -47,8 +47,8 @@ class Group:public SketchObject,public SketchObjectContainer
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container);
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const;
 	virtual void read(IO::File& file,SketchObjectCreator& creator);
-	virtual void glRenderAction(GLContextData& contextData) const;
-	virtual void glRenderActionHighlight(Scalar cycle,GLContextData& contextData) const;
+	virtual void glRenderAction(RenderState& renderState) const;
+	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const;
 	
 	/* Methods from class SketchObjectContainer: */
 	virtual void append(SketchObject* newObject);

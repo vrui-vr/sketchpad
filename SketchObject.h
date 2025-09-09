@@ -32,8 +32,8 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 namespace IO {
 class File;
 }
-class GLContextData;
 class Capsule;
+class RenderState;
 class SketchObjectList;
 class SketchObjectContainer;
 class SketchSettings;
@@ -163,10 +163,8 @@ class SketchObject
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container) =0; // Erases the part of the object that lies within the capsule defined by the two center points and the radius
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const =0; // Writes the sketch object to the given binary file
 	virtual void read(IO::File& file,SketchObjectCreator& creator) =0; // Reads the sketch object from the given binary file
-	virtual void setGLState(GLContextData& contextData) const; // Prepares the given OpenGL context for rendering a series of sketch objects of this object's class
-	virtual void glRenderAction(GLContextData& contextData) const =0; // Renders the sketch object into the given OpenGL context
-	virtual void glRenderActionHighlight(Scalar cycle,GLContextData& contextData) const =0; // Highlights the sketch object into the given OpenGL context using the given cycle value in [-1, 1]
-	virtual void resetGLState(GLContextData& contextData) const; // Resets the given OpenGL context after rendering a series of sketch objects of this object's class
+	virtual void glRenderAction(RenderState& renderState) const =0; // Renders the sketch object
+	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const =0; // Highlights the sketch object
 	};
 
 class SketchObjectFactory
@@ -190,7 +188,7 @@ class SketchObjectFactory
 	virtual void motion(const Point& pos,bool lingering,bool firstNeighborhood) =0; // Registers a motion while the button is down to the given position
 	virtual bool buttonUp(const Point& pos) =0; // Registers a button release at the given position; returns true if the currently created sketch object is finished
 	virtual SketchObject* finish(void) =0; // Finishes and returns the currently created sketch object
-	virtual void glRenderAction(GLContextData& contextData) const =0; // Renders the sketch object factory's state into the given OpenGL context
+	virtual void glRenderAction(RenderState& renderState) const =0; // Renders the sketch object factory's state
 	};
 
 #endif

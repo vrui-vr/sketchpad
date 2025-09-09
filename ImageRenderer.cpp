@@ -1,6 +1,5 @@
 /***********************************************************************
-SketchObject - Base class for sketching objects for a simple sketching
-application.
+ImageRenderer - Class to render images using 2D textures.
 Copyright (c) 2016-2025 Oliver Kreylos
 
 This file is part of the SketchPad vector drawing package.
@@ -21,20 +20,36 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 02111-1307 USA
 ***********************************************************************/
 
-#include "SketchObject.h"
+#include "ImageRenderer.h"
 
-/*****************************
-Methods of class SketchObject:
-*****************************/
+#include <GL/gl.h>
 
-SketchObject::~SketchObject(void)
+/**************************************
+Static elements of class ImageRenderer:
+**************************************/
+
+ImageRenderer ImageRenderer::theRenderer;
+
+/******************************
+Methods of class ImageRenderer:
+******************************/
+
+void ImageRenderer::initContext(GLContextData& contextData) const
 	{
 	}
 
-/************************************
-Methods of class SketchObjectFactory:
-************************************/
-
-SketchObjectFactory::~SketchObjectFactory(void)
+GLObject::DataItem* ImageRenderer::activate(GLContextData& contextData) const
 	{
+	/* Set up OpenGL state: */
+	glPushAttrib(GL_ENABLE_BIT|GL_TEXTURE_BIT);
+	glEnable(GL_TEXTURE_RECTANGLE_ARB);
+	
+	return 0;
+	}
+
+void ImageRenderer::deactivate(GLObject::DataItem* dataItem) const
+	{
+	/* Reset OpenGL state: */
+	glBindTexture(GL_TEXTURE_RECTANGLE_ARB,0);
+	glPopAttrib();
 	}

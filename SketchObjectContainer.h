@@ -28,7 +28,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchObjectList.h"
 
 /* Forward declarations: */
-class GLContextData;
+class RenderState;
 
 class SketchObjectContainer
 	{
@@ -37,8 +37,8 @@ class SketchObjectContainer
 	SketchObjectList sketchObjects; // List of sketch objects in the container
 	
 	/* Protected methods: */
-	void drawObjects(GLContextData& contextData) const; // Draws all sketch objects in the container in order
-	void drawObjectsHighlight(Scalar cycle,GLContextData& contextData) const; // Highlights all sketch objects in the container in order using the given cycle in [-1, 1]
+	void drawObjects(RenderState& renderState) const; // Draws all sketch objects in the container in order
+	void drawObjectsHighlight(Scalar cycle,RenderState& renderState) const; // Highlights all sketch objects in the container in order using the given cycle in [-1, 1]
 	
 	/* Constructors and destructors: */
 	public:

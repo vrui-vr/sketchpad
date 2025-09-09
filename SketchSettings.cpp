@@ -30,6 +30,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GL/GLGeometryWrappers.h>
 #include <GL/GLTransformationWrappers.h>
 
+#include "RenderState.h"
 #include "Group.h"
 
 /*******************************
@@ -345,29 +346,25 @@ void SketchSettings::snapSelectedObjectsToGrid(void)
 		}
 	}
 
-void SketchSettings::drawSelectedObjects(const Transformation& transform,GLContextData& contextData) const
+void SketchSettings::drawSelectedObjects(const Transformation& transform,RenderState& renderState) const
 	{
 	/* Draw all selected objects at their tentative new positions: */
 	glPushMatrix();
 	glMultMatrix(transform);
 	
 	for(SketchObjectSet::ConstIterator ssoIt=selectedObjects.begin();!ssoIt.isFinished();++ssoIt)
-		{
-		ssoIt->getSource()->setGLState(contextData);
-		ssoIt->getSource()->glRenderAction(contextData);
-		ssoIt->getSource()->resetGLState(contextData);
-		}
+		ssoIt->getSource()->glRenderAction(renderState);
 	
 	glPopMatrix();
 	}
 
-void SketchSettings::highlightSelectedObjects(const Transformation& transform,GLContextData& contextData) const
+void SketchSettings::highlightSelectedObjects(const Transformation& transform,RenderState& renderState) const
 	{
 	#if 1
 	
 	/* Highlight all selected sketch objects: */
 	for(SketchObjectSet::ConstIterator ssoIt=selectedObjects.begin();!ssoIt.isFinished();++ssoIt)
-		ssoIt->getSource()->glRenderActionHighlight(highlightCycle,contextData);
+		ssoIt->getSource()->glRenderActionHighlight(highlightCycle,renderState);
 	
 	#else
 	
@@ -415,20 +412,16 @@ void SketchSettings::highlightSelectedObjects(const Transformation& transform,GL
 	#endif
 	}
 
-void SketchSettings::glRenderAction(const Box& viewBox,GLContextData& contextData) const
+void SketchSettings::glRenderAction(const Box& viewBox,RenderState& renderState) const
 	{
 	/* Render all sketch objects: */
-	drawObjects(contextData);
+	drawObjects(renderState);
 	
 	#if 1
 	
 	/* Highlight all selected sketch objects: */
 	for(SketchObjectSet::ConstIterator ssoIt=selectedObjects.begin();!ssoIt.isFinished();++ssoIt)
-		{
-		ssoIt->getSource()->setGLState(contextData);
-		ssoIt->getSource()->glRenderActionHighlight(highlightCycle,contextData);
-		ssoIt->getSource()->resetGLState(contextData);
-		}
+		ssoIt->getSource()->glRenderActionHighlight(highlightCycle,renderState);
 	
 	#else
 	
@@ -472,11 +465,12 @@ void SketchSettings::glRenderAction(const Box& viewBox,GLContextData& contextDat
 	#endif
 	}
 
-void SketchSettings::renderGrid(const Box& viewBox,GLContextData& contextData) const
+void SketchSettings::renderGrid(const Box& viewBox,RenderState& renderState) const
 	{
 	if(gridEnabled)
 		{
 		/* Render a drawing support grid: */
+		renderState.setRenderer(0);
 		glPushAttrib(GL_ENABLE_BIT|GL_LINE_BIT);
 		glDisable(GL_LIGHTING);
 		glLineWidth(1.0f);

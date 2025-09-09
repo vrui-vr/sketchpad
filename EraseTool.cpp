@@ -28,6 +28,8 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Vrui/Vrui.h>
 #include <Vrui/ToolManager.h>
 
+#include "RenderState.h"
+
 /*********************************************
 Static elements of class SketchPad::EraseTool:
 *********************************************/
@@ -129,11 +131,12 @@ void SketchPad::EraseTool::frame(void)
 		}
 	}
 
-void SketchPad::EraseTool::glRenderAction(GLContextData& contextData) const
+void SketchPad::EraseTool::glRenderAction(RenderState& renderState) const
 	{
 	if(isActive())
 		{
 		/* Draw the eraser capsule's outline: */
+		renderState.setRenderer(0);
 		glPushAttrib(GL_ENABLE_BIT|GL_LINE_BIT);
 		glDisable(GL_LIGHTING);
 		glLineWidth(1.0f);

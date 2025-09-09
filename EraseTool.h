@@ -53,7 +53,7 @@ class SketchPad::EraseTool:public SketchPad::SketchPadTool
 	virtual void frame(void);
 	
 	/* Methods from class SketchPadTool: */
-	virtual void glRenderAction(GLContextData& contextData) const;
+	virtual void glRenderAction(RenderState& renderState) const;
 	};
 
 #endif

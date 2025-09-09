@@ -45,177 +45,18 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "Capsule.h"
 #include "SketchObjectContainer.h"
 #include "SketchSettings.h"
-
-/************************************
-Declaration of class Curve::Renderer:
-************************************/
-
-class Curve::Renderer:public GLObject
-	{
-	friend class Curve;
-	
-	/* Embedded classes: */
-	private:
-	struct DataItem:public GLObject::DataItem
-		{
-		/* Elements: */
-		public:
-		GLhandleARB lineShader; // GLSL shader to render anti-aliased lines
-		GLint uniforms[2]; // Locations of the line rendering shader's uniform variables
-		
-		/* Constructors and destructors: */
-		DataItem(void);
-		virtual ~DataItem(void);
-		};
-	
-	/* Methods from class GLObject: */
-	public:
-	virtual void initContext(GLContextData& contextData) const;
-	};
-
-/******************************************
-Methods of class Curve::Renderer::DataItem:
-******************************************/
-
-Curve::Renderer::DataItem::DataItem(void)
-	:lineShader(0)
-	{
-	/* Initialize required OpenGL extensions: */
-	GLARBShaderObjects::initExtension();
-	GLARBVertexShader::initExtension();
-	GLARBFragmentShader::initExtension();
-	
-	/* Create the line rendering shader: */
-	lineShader=glCreateProgramObjectARB();
-	}
-
-Curve::Renderer::DataItem::~DataItem(void)
-	{
-	/* Destroy the line rendering shader: */
-	glDeleteObjectARB(lineShader);
-	}
-
-/********************************
-Methods of class Curve::Renderer:
-********************************/
-
-void Curve::Renderer::initContext(GLContextData& contextData) const
-	{
-	/* Create a data item and associate it with this context: */
-	DataItem* dataItem=new DataItem;
-	contextData.addDataItem(this,dataItem);
-	
-	/* Create the line rendering shader: */
-	GLhandleARB vertexShader=glCompileVertexShaderFromFile(SKETCHPAD_SHADERDIR "/CurveRenderer.vs");
-	glAttachObjectARB(dataItem->lineShader,vertexShader);
-	glDeleteObjectARB(vertexShader);
-	
-	/* Figure out what type of geometry shader to use: */
-	if(contextData.getContext().isVersionLargerEqual(3,2))
-		{
-		GLhandleARB geometryShader=glCompileARBGeometryShader4FromFile(SKETCHPAD_SHADERDIR "/CurveRendererCore.gs");
-		glAttachObjectARB(dataItem->lineShader,geometryShader);
-		glDeleteObjectARB(geometryShader);
-		}
-	else if(GLARBGeometryShader4::isSupported())
-		{
-		/* Create a GL_ARB_geometry_shader4 geometry shader: */
-		GLARBGeometryShader4::initExtension();
-		
-		GLhandleARB geometryShader=glCompileARBGeometryShader4FromFile(SKETCHPAD_SHADERDIR "/CurveRendererARB.gs");
-		glAttachObjectARB(dataItem->lineShader,geometryShader);
-		glDeleteObjectARB(geometryShader);
-		
-		glProgramParameteriARB(dataItem->lineShader,GL_GEOMETRY_INPUT_TYPE_ARB,GL_LINES);
-		glProgramParameteriARB(dataItem->lineShader,GL_GEOMETRY_OUTPUT_TYPE_ARB,GL_TRIANGLE_STRIP);
-		glProgramParameteriARB(dataItem->lineShader,GL_GEOMETRY_VERTICES_OUT_ARB,8);
-		}
-	
-	GLhandleARB fragmentShader=glCompileFragmentShaderFromFile(SKETCHPAD_SHADERDIR "/CurveRenderer.fs");
-	glAttachObjectARB(dataItem->lineShader,fragmentShader);
-	glDeleteObjectARB(fragmentShader);
-	
-	glLinkAndTestShader(dataItem->lineShader);
-	dataItem->uniforms[0]=glGetUniformLocationARB(dataItem->lineShader,"lineWidth");
-	dataItem->uniforms[1]=glGetUniformLocationARB(dataItem->lineShader,"pixelSize");
-	}
+#include "RenderState.h"
+#include "PolylineRenderer.h"
 
 /******************************
 Static elements of class Curve:
 ******************************/
 
 unsigned int Curve::typeCode=0;
-Curve::Renderer Curve::renderer;
 
 /**********************
 Methods of class Curve:
 **********************/
-
-void Curve::draw(const Color& drawColor,GLContextData& contextData) const
-	{
-	/* Draw the curve: */
-	
-	/* Install the line rendering shader: */
-	Renderer::DataItem* dataItem=contextData.retrieveDataItem<Renderer::DataItem>(&renderer);
-	glUseProgramObjectARB(dataItem->lineShader);
-	glUniform1fARB(dataItem->uniforms[0],lineWidth);
-	
-	/* Calculate the size of a pixel in the current navigation transformation: */
-	const Vrui::DisplayState& ds=Vrui::getDisplayState(contextData);
-	const Vrui::Scalar* panRect=ds.window->getPanRect();
-	double pw=ds.screen->getWidth()*(panRect[1]-panRect[0])/double(ds.viewport.size[0]);
-	double ph=ds.screen->getHeight()*(panRect[3]-panRect[2])/double(ds.viewport.size[1]);
-	double pixelSize=Math::sqrt(pw*ph);
-	pixelSize*=Vrui::getInverseNavigationTransformation().getScaling();
-	glUniform1fARB(dataItem->uniforms[1],float(pixelSize));
-	
-	glColor(drawColor);
-	if(points.size()>=2)
-		{
-		/* Draw the curve as a line strip: */
-		glBegin(GL_LINE_STRIP);
-		std::vector<Point>::const_iterator p0It=points.begin();
-		glNormal3f(0.0f,0.0f,0.0f);
-		glVertex(*p0It);
-		
-		std::vector<Point>::const_iterator p1It=p0It+1;
-		Vector v0=*p1It-*p0It;
-		v0.normalize();
-		while(true)
-			{
-			/* Get the next vertex and bail out if there isn't one: */
-			std::vector<Point>::const_iterator p2It=p1It+1;
-			if(p2It==points.end())
-				break;
-			
-			/* Calculate the separating normal vector between the two adjacent line segments: */
-			Vector v1=*p2It-*p1It;
-			v1.normalize();
-			glNormal(v0+v1);
-			glVertex(*p1It);
-			
-			/* Go to the next line segment: */
-			p0It=p1It;
-			p1It=p2It;
-			v0=v1;
-			}
-		
-		glNormal3f(0.0f,0.0f,0.0f);
-		glVertex(*p1It);
-		
-		glEnd();
-		}
-	else
-		{
-		/* Draw a single point as a line with identical end points: */
-		glBegin(GL_LINES);
-		glNormal3f(0.0f,0.0f,0.0f);
-		glVertex(points[0]);
-		glEnd();
-		}
-	
-	glUseProgramObjectARB(0);
-	}
 
 unsigned int Curve::getTypeCode(void) const
 	{
@@ -458,24 +299,14 @@ void Curve::read(IO::File& file,SketchObjectCreator& creator)
 	std::swap(points,newPoints);
 	}
 
-void Curve::setGLState(GLContextData& contextData) const
+void Curve::glRenderAction(RenderState& renderState) const
 	{
-	#if 0 // Not necessary -- it's the default state
-	
-	/* Set up OpenGL state: */
-	glPushAttrib(GL_ENABLE_BIT|GL_LINE_BIT);
-	glDisable(GL_LIGHTING);
-	
-	#endif
+	/* Draw the curve using a polyline renderer: */
+	renderState.setRenderer(PolylineRenderer::getTheRenderer());
+	PolylineRenderer::getTheRenderer()->draw(points,color,lineWidth,renderState.getDataItem());
 	}
 
-void Curve::glRenderAction(GLContextData& contextData) const
-	{
-	/* Draw the curve using its color: */
-	draw(color,contextData);
-	}
-
-void Curve::glRenderActionHighlight(Scalar cycle,GLContextData& contextData) const
+void Curve::glRenderActionHighlight(Scalar cycle,RenderState& renderState) const
 	{
 	/* Calculate the current highlight color: */
 	Color highlight=cycle>=Scalar(0)?Color(255U,255U,255U):Color(0U,0U,0U);
@@ -483,18 +314,9 @@ void Curve::glRenderActionHighlight(Scalar cycle,GLContextData& contextData) con
 	for(int i=0;i<4;++i)
 		highlight[i]=GLubyte(Math::floor(Scalar(color[i])*(Scalar(1)-cycle)+Scalar(highlight[i])*cycle+Scalar(0.5)));
 	
-	/* Draw the curve using the highlight color: */
-	draw(highlight,contextData);
-	}
-
-void Curve::resetGLState(GLContextData& contextData) const
-	{
-	#if 0 // Not necessary -- it's the default state
-	
-	/* Reset OpenGL state: */
-	glPopAttrib();
-	
-	#endif
+	/* Draw the curve using a polyline renderer: */
+	renderState.setRenderer(PolylineRenderer::getTheRenderer());
+	PolylineRenderer::getTheRenderer()->draw(points,highlight,lineWidth,renderState.getDataItem());
 	}
 
 /*****************************
@@ -659,13 +481,12 @@ SketchObject* CurveFactory::finish(void)
 	return result;
 	}
 
-void CurveFactory::glRenderAction(GLContextData& contextData) const
+void CurveFactory::glRenderAction(RenderState& renderState) const
 	{
 	if(current!=0)
 		{
-		/* Draw the currently created curve: */
-		current->setGLState(contextData);
-		current->glRenderAction(contextData);
-		current->resetGLState(contextData);
+		/* Draw the currently created curve using a polyline renderer: */
+		renderState.setRenderer(PolylineRenderer::getTheRenderer());
+		PolylineRenderer::getTheRenderer()->draw(current->points,current->color,current->lineWidth,renderState.getDataItem());
 		}
 	}
