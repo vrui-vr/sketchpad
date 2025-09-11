@@ -57,7 +57,6 @@ struct PolylineRenderer::DataItem:public GLObject::DataItem
 		{
 		/* Elements: */
 		public:
-		Vector normal; // Halfway vector between adjacent polyline segments, uploaded to shader as normal vector
 		Point position; // Vertex position
 		};
 	
@@ -124,7 +123,6 @@ struct PolylineRenderer::DataItem:public GLObject::DataItem
 	DataItem::Vertex* uploadEnd; // Pointer after the end of the allocated memory chunk
 	size_t uploadNumVertices; // Number of polyline vertices already uploaded
 	Point uploadP0; // The previously uploaded polyline vertex
-	Vector uploadV0; // Direction vector between the two previously uploaded polyline vertices
 	
 	/* Constructors and destructors: */
 	DataItem(GLContextData& contextData);
@@ -428,7 +426,6 @@ GLObject::DataItem* PolylineRenderer::activate(GLContextData& contextData) const
 	DataItem* dataItem=contextData.retrieveDataItem<DataItem>(this);
 	
 	/* Enable vertex array rendering: */
-	glEnableClientState(GL_NORMAL_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 	
 	/* Activate the line rendering shader: */
@@ -466,7 +463,6 @@ void PolylineRenderer::deactivate(GLObject::DataItem* dataItem) const
 	myDataItem->currentBufferId=0U;
 	
 	/* Disable vertex array rendering: */
-	glDisableClientState(GL_NORMAL_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	}
 
@@ -569,7 +565,7 @@ void PolylineRenderer::draw(const void* cacheId,unsigned int version,const Polyl
 	if(cmIt.isFinished())
 		{
 		/* Find a memory chunk to hold the polyline's vertices: */
-		DataItem::CacheItem cacheItem=myDataItem->allocate(Misc::max(polyline.size(),size_t(2))); // Polylines use at least two vertices
+		DataItem::CacheItem cacheItem=myDataItem->allocate(Misc::max(polyline.size(),size_t(2))+2U); // Polylines use at least two vertices and two extra vertices
 		
 		/* Add the polyline to the cache: */
 		cacheItem.version=version;
@@ -582,7 +578,7 @@ void PolylineRenderer::draw(const void* cacheId,unsigned int version,const Polyl
 		{
 		/* Assign a different memory chunk to hold the polyline's vertices: */
 		myDataItem->release(cmIt->getDest());
-		cmIt->getDest()=myDataItem->allocate(Misc::max(polyline.size(),size_t(2))); // Polylines use at least two vertices
+		cmIt->getDest()=myDataItem->allocate(Misc::max(polyline.size(),size_t(2))+2U); // Polylines use at least two vertices and two extra vertices
 		
 		/* Update the cache item's version number: */
 		cmIt->getDest().version=version;
@@ -599,66 +595,43 @@ void PolylineRenderer::draw(const void* cacheId,unsigned int version,const Polyl
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB,myDataItem->currentBufferId);
 		
 		/* Reset the vertex pointers into the new memory block: */
-		glNormalPointer(GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+0);
-		glVertexPointer(3,GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+3);
+		glVertexPointer(3,GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+0);
 		}
 	
 	/* Upload the polyline's vertices to the assigned memory chunk if necessary: */
 	if(uploadPolyline)
 		{
+		/* Map the allocated memory chunk: */
 		DataItem::Vertex* vPtr=static_cast<DataItem::Vertex*>(glMapBufferARB(GL_ARRAY_BUFFER_ARB,GL_WRITE_ONLY));
 		vPtr+=cmIt->getDest().offset;
-		if(polyline.size()>2)
+		
+		/* Upload the first polyline vertex: */
+		vPtr->position=polyline.front();
+		++vPtr;
+		
+		if(polyline.size()>1)
 			{
-			/* Draw a line strip: */
-			Polyline::const_iterator p0It=polyline.begin();
-			vPtr->normal=Vector::zero;
-			vPtr->position=*p0It;
-			++vPtr;
-			
-			Polyline::const_iterator p1It=p0It+1;
-			Vector v0=*p1It-*p0It;
-			v0.normalize();
-			for(p0It=p1It,++p1It;p1It!=polyline.end();p0It=p1It,++p1It)
+			/* Upload all polyline vertices: */
+			for(Polyline::const_iterator pIt=polyline.begin();pIt!=polyline.end();++pIt)
 				{
-				/* Calculate the separating normal vector between the two adjacent line segments: */
-				Vector v1=*p1It-*p0It;
-				v1.normalize();
-				if(v0*v1>=Scalar(0))
-					vPtr->normal=(v0+v1);
-				else
-					vPtr->normal=Vector::zero;
-				vPtr->position=*p0It;
+				vPtr->position=*pIt;
 				++vPtr;
-				
-				/* Go to the next line segment: */
-				v0=v1;
 				}
-			
-			vPtr->normal=Vector::zero;
-			vPtr->position=*p0It;
-			++vPtr;
-			}
-		else if(polyline.size()==2)
-			{
-			/* Draw a single line segment: */
-			vPtr->normal=Vector::zero;
-			vPtr->position=polyline[0];
-			++vPtr;
-			vPtr->normal=Vector::zero;
-			vPtr->position=polyline[1];
-			++vPtr;
 			}
 		else
 			{
-			/* Draw a line segment with identical end points: */
-			vPtr->normal=Vector::zero;
-			vPtr->position=polyline[0];
+			/* Upload the only polyline vertex twice: */
+			vPtr->position=polyline.front();
 			++vPtr;
-			vPtr->normal=Vector::zero;
-			vPtr->position=polyline[0];
+			vPtr->position=polyline.back();
 			++vPtr;
 			}
+		
+		/* Upload the last polyline vertex: */
+		vPtr->position=polyline.back();
+		++vPtr;
+		
+		/* Unmap the memory chunk: */
 		glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
 		}
 	
@@ -672,8 +645,8 @@ void PolylineRenderer::draw(const void* cacheId,unsigned int version,const Polyl
 	/* Set the color: */
 	glColor(color);
 	
-	/* Draw the polyline as a line strip: */
-	glDrawArrays(GL_LINE_STRIP,cmIt->getDest().offset,cmIt->getDest().size);
+	/* Draw the polyline as a line strip with adjacency: */
+	glDrawArrays(GL_LINE_STRIP_ADJACENCY,cmIt->getDest().offset,cmIt->getDest().size);
 	}
 
 bool PolylineRenderer::draw(const void* cacheId,unsigned int version,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const
@@ -687,7 +660,7 @@ bool PolylineRenderer::draw(const void* cacheId,unsigned int version,const Color
 	if(cmIt.isFinished())
 		{
 		/* Find the largest available memory chunk to hold the polyline's vertices: */
-		DataItem::CacheItem cacheItem=myDataItem->allocateLargest(2U); // Every polyline has at least two vertices
+		DataItem::CacheItem cacheItem=myDataItem->allocateLargest(4U); // Every polyline has at least two vertices and two extra vertices
 		
 		/* Add the polyline to the cache: */
 		cacheItem.version=version;
@@ -719,7 +692,6 @@ bool PolylineRenderer::draw(const void* cacheId,unsigned int version,const Color
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB,myDataItem->currentBufferId);
 		
 		/* Reset the vertex pointers into the new memory block: */
-		glNormalPointer(GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+0);
 		glVertexPointer(3,GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+3);
 		}
 	
@@ -747,8 +719,8 @@ bool PolylineRenderer::draw(const void* cacheId,unsigned int version,const Color
 		}
 	else
 		{
-		/* Draw the polyline as a line strip: */
-		glDrawArrays(GL_LINE_STRIP,cmIt->getDest().offset,cmIt->getDest().size);
+		/* Draw the polyline as a line strip with adjacency: */
+		glDrawArrays(GL_LINE_STRIP_ADJACENCY,cmIt->getDest().offset,cmIt->getDest().size);
 		}
 	
 	return uploadPolyline;
@@ -759,39 +731,19 @@ void PolylineRenderer::addVertex(const Point& vertex,GLObject::DataItem* dataIte
 	/* Retrieve the data item: */
 	DataItem* myDataItem=static_cast<DataItem*>(dataItem);
 	
-	if(myDataItem->uploadNumVertices>=2U)
+	if(myDataItem->uploadNumVertices==0U)
 		{
-		/* Calculate the next direction vector: */
-		Vector v1=(vertex-myDataItem->uploadP0).normalize();
-		
-		/* Upload the previous vertex: */
-		if(v1*myDataItem->uploadV0>=Scalar(0))
-			myDataItem->uploadPtr->normal=myDataItem->uploadV0+v1;
-		else
-			myDataItem->uploadPtr->normal=Vector::zero;
-		myDataItem->uploadPtr->position=myDataItem->uploadP0;
+		/* Upload the initial vertex: */
+		myDataItem->uploadPtr->position=vertex;
 		++myDataItem->uploadPtr;
-		
-		/* Remember the next vertex and direction vector: */
-		myDataItem->uploadP0=vertex;
-		myDataItem->uploadV0=v1;
 		}
-	else
-		{
-		if(myDataItem->uploadNumVertices==1U)
-			{
-			/* Calculate the first direction vector: */
-			myDataItem->uploadV0=(vertex-myDataItem->uploadP0).normalize();
-			
-			/* Upload the first vertex: */
-			myDataItem->uploadPtr->normal=Vector::zero;
-			myDataItem->uploadPtr->position=myDataItem->uploadP0;
-			++myDataItem->uploadPtr;
-			}
-		
-		/* Remember the next vertex: */
-		myDataItem->uploadP0=vertex;
-		}
+	
+	/* Upload the current vertex: */
+	myDataItem->uploadPtr->position=vertex;
+	++myDataItem->uploadPtr;
+	
+	/* Remember this vertex in case it's the last: */
+	myDataItem->uploadP0=vertex;
 	++myDataItem->uploadNumVertices;
 	
 	/* Check if there is no more room in the allocated memory chunk: */
@@ -831,8 +783,14 @@ void PolylineRenderer::finish(GLObject::DataItem* dataItem) const
 	/* Retrieve the data item: */
 	DataItem* myDataItem=static_cast<DataItem*>(dataItem);
 	
+	/* If only one vertex was specified, use it twice: */
+	if(myDataItem->uploadNumVertices==1U)
+		{
+		myDataItem->uploadPtr->position=myDataItem->uploadP0;
+		++myDataItem->uploadPtr;
+		}
+	
 	/* Upload the final vertex: */
-	myDataItem->uploadPtr->normal=Vector::zero;
 	myDataItem->uploadPtr->position=myDataItem->uploadP0;
 	++myDataItem->uploadPtr;
 	
@@ -851,8 +809,8 @@ void PolylineRenderer::finish(GLObject::DataItem* dataItem) const
 		myDataItem->release(unusedItem);
 		}
 	
-	/* Draw the polyline as a line strip: */
-	glDrawArrays(GL_LINE_STRIP,myDataItem->uploadItem->offset,myDataItem->uploadItem->size);
+	/* Draw the polyline as a line strip with adjacency: */
+	glDrawArrays(GL_LINE_STRIP_ADJACENCY,myDataItem->uploadItem->offset,myDataItem->uploadItem->size);
 	
 	/* Reset upload state: */
 	myDataItem->uploadItem=0;

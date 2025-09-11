@@ -20,12 +20,9 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 02111-1307 USA
 ***********************************************************************/
 
-varying vec2 vNormal;
-
 void main()
 	{
-	/* Pass vertex color, normal, and model-space position to geometry shader: */
+	/* Pass vertex color and model-space position to the geometry shader: */
 	gl_FrontColor=gl_Color;
-	vNormal=gl_Normal.xy;
 	gl_Position=gl_Vertex;
 	}

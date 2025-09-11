@@ -22,77 +22,130 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 
 #version 330
 
-layout (lines) in;
+layout (lines_adjacency) in;
 layout (triangle_strip) out;
-layout (max_vertices=8) out;
+layout (max_vertices=4) out;
 
 uniform float lineWidth;
 uniform float pixelSize;
 
-varying in vec2 vNormal[];
 varying out vec2 linePos;
-varying out vec2 v0,n0,v1,n1;
-varying out vec2 modelPos;
+varying out float lineLength;
 
 void main()
 	{
 	/* Calculate the outer line half width: */
 	float hw1=(lineWidth+pixelSize)*0.5;
 	
-	/* Calculate the line segment's direction and normal vectors: */
-	v0=gl_PositionIn[0].xy;
-	v1=gl_PositionIn[1].xy;
-	vec2 v;
-	if(v1==v0) // Use an arbitrary direction for zero-length line segments: */
-		v=vec2(hw1,0.0);
+	/* Calculate the three segment direction vectors: */
+	vec2 d0=gl_PositionIn[1].xy-gl_PositionIn[0].xy;
+	vec2 d1=gl_PositionIn[2].xy-gl_PositionIn[1].xy;
+	vec2 d2=gl_PositionIn[3].xy-gl_PositionIn[2].xy;
+	
+	/* Calculate the quad's generating directions: */
+	float d1Len=length(d1);
+	vec2 x;
+	if(d1Len!=0.0)
+		x=d1*(hlw/d1Len);
 	else
-		v=normalize(v1-v0)*hw1;
-	vec2 n=vec2(-v.y,v.x);
-	n0=vNormal[0];
-	n1=vNormal[1];
+		x=vec2(hlw,0.0);
+	vec2 y=vec2(-x.y,x.x);
 	
-	/* Emit vertices for three quads representing the extended line segment: */
-	gl_FrontColor=gl_FrontColorIn[0];
-	linePos=vec2(-hw1,hw1);
-	modelPos=v0-v+n;
-	gl_Position=gl_ModelViewProjectionMatrix*vec4(v0-v+n,0.0,1.0);
-	EmitVertex();
-	gl_FrontColor=gl_FrontColorIn[0];
-	linePos=vec2(-hw1,-hw1);
-	modelPos=v0-v-n;
-	gl_Position=gl_ModelViewProjectionMatrix*vec4(v0-v-n,0.0,1.0);
-	EmitVertex();
+	/* Generate the quad's two starting vertices: */
+	float d0d1=dot(d0,d1);
+	if(d0d1>0.0)
+		{
+		/* Calculate the half-angle vector between the line segment and its left neighbor: */
+		float d0Len=length(d0);
+		vec2 h=d0/d0Len+d1/d1Len;
+		float alpha=acos(d0d1/(d0Len*d1Len));
+		h=h*(hlw/(length(h)*cos(alpha*0.5)));
+		vec2 half=vec2(-h.y,h.x);
+		
+		float xoff=hlw*tan(alpha*0.5);
+		if(d0.x*d1.y-d0.y*d1.x<0.0)
+			xoff=-xoff;
+		
+		/* Emit the top left vertex: */
+		gl_FrontColor=gl_FrontColorIn[1];
+		linePos=vec2(-d1Len*0.5+xoff,hlw);
+		lineLength=d1Len;
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[1]+vec4(half,0.0,0.0));
+		EmitVertex();
+		
+		/* Emit the bottom left vertex: */
+		gl_FrontColor=gl_FrontColorIn[1];
+		linePos=vec2(-d1Len*0.5-xoff,-hlw);
+		lineLength=d1Len;
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[1]+vec4(-half,0.0,0.0));
+		EmitVertex();
+		}
+	else
+		{
+		/* Add a full end cap to the left of the quad: */
+		
+		/* Emit the top left vertex: */
+		gl_FrontColor=gl_FrontColorIn[1];
+		linePos=vec2(-d1Len*0.5-hlw,hlw);
+		lineLength=d1Len;
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[1]+vec4(-x+y,0.0,0.0));
+		EmitVertex();
+		
+		/* Emit the bottom left vertex: */
+		gl_FrontColor=gl_FrontColorIn[1];
+		linePos=vec2(-d1Len*0.5-hlw,-hlw);
+		lineLength=d1Len;
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[1]+vec4(-x-y,0.0,0.0));
+		EmitVertex();
+		}
 	
-	gl_FrontColor=gl_FrontColorIn[0];
-	linePos=vec2(0,hw1);
-	modelPos=v0+n;
-	gl_Position=gl_ModelViewProjectionMatrix*vec4(v0+n,0.0,1.0);
-	EmitVertex();
-	gl_FrontColor=gl_FrontColorIn[0];
-	linePos=vec2(0,-hw1);
-	modelPos=v0-n;
-	gl_Position=gl_ModelViewProjectionMatrix*vec4(v0-n,0.0,1.0);
-	EmitVertex();
+	/* Generate the quad's two ending vertices: */
+	float d1d2=dot(d1,d2);
+	if(d1d2>0.0)
+		{
+		/* Calculate the half-angle vector between the line segment and its left neighbor: */
+		float d2Len=length(d2);
+		vec2 h=d1/d1Len+d2/d2Len;
+		float alpha=acos(d1d2/(d1Len*d2Len));
+		h=h*(hlw/(length(h)*cos(alpha*0.5)));
+		vec2 half=vec2(-h.y,h.x);
+		
+		float xoff=hlw*tan(alpha*0.5);
+		if(d1.x*d2.y-d1.y*d2.x<0.0)
+			xoff=-xoff;
+		
+		/* Emit the top left vertex: */
+		gl_FrontColor=gl_FrontColorIn[2];
+		linePos=vec2(d1Len*0.5-xoff,hlw);
+		lineLength=d1Len;
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[2]+vec4(half,0.0,0.0));
+		EmitVertex();
+		
+		/* Emit the bottom left vertex: */
+		gl_FrontColor=gl_FrontColorIn[2];
+		linePos=vec2(d1Len*0.5+xoff,-hlw);
+		lineLength=d1Len;
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[2]+vec4(-half,0.0,0.0));
+		EmitVertex();
+		}
+	else
+		{
+		/* Add a full end cap to the right of the quad: */
+		
+		/* Emit the top right vertex: */
+		gl_FrontColor=gl_FrontColorIn[2];
+		linePos=vec2(d1Len*0.5+hlw,hlw);
+		lineLength=d1Len;
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[2]+vec4(x+y,0.0,0.0));
+		EmitVertex();
+		
+		/* Emit the bottom left vertex: */
+		gl_FrontColor=gl_FrontColorIn[2];
+		linePos=vec2(d1Len*0.5+hlw,-hlw);
+		lineLength=d1Len;
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[2]+vec4(x-y,0.0,0.0));
+		EmitVertex();
+		}
 	
-	gl_FrontColor=gl_FrontColorIn[0];
-	linePos=vec2(0,hw1);
-	modelPos=v1+n;
-	gl_Position=gl_ModelViewProjectionMatrix*vec4(v1+n,0.0,1.0);
-	EmitVertex();
-	gl_FrontColor=gl_FrontColorIn[0];
-	linePos=vec2(0,-hw1);
-	modelPos=v1-n;
-	gl_Position=gl_ModelViewProjectionMatrix*vec4(v1-n,0.0,1.0);
-	EmitVertex();
-	
-	gl_FrontColor=gl_FrontColorIn[0];
-	linePos=vec2(hw1,hw1);
-	modelPos=v1+v+n;
-	gl_Position=gl_ModelViewProjectionMatrix*vec4(v1+v+n,0.0,1.0);
-	EmitVertex();
-	gl_FrontColor=gl_FrontColorIn[0];
-	linePos=vec2(hw1,-hw1);
-	modelPos=v1+v-n;
-	gl_Position=gl_ModelViewProjectionMatrix*vec4(v1+v-n,0.0,1.0);
-	EmitVertex();
+	EndPrimitive();
 	}

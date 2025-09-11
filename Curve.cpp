@@ -530,10 +530,7 @@ SketchObject* CurveFactory::finish(void)
 
 void CurveFactory::glRenderAction(RenderState& renderState) const
 	{
+	/* Draw the current curve if it exists: */
 	if(current!=0)
-		{
-		/* Draw the currently created curve using a polyline renderer: */
-		renderState.setRenderer(Curve::renderer);
-		Curve::renderer->draw(current->points,current->color,current->lineWidth,renderState.getDataItem());
-		}
+		current->glRenderAction(renderState);
 	}
