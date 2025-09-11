@@ -70,7 +70,7 @@ void main()
 		gl_FrontColor=gl_FrontColorIn[1];
 		linePos=vec2(-d1Len*0.5+xoff,hlw);
 		lineLength=d1Len;
-		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[1]+vec4(half,0.0,0.0));
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[1]+vec4(halfv,0.0,0.0));
 		EmitVertex();
 		
 		/* Emit the bottom left vertex: */
@@ -108,7 +108,7 @@ void main()
 		vec2 h=d1/d1Len+d2/d2Len;
 		float alpha=acos(d1d2/(d1Len*d2Len));
 		h=h*(hlw/(length(h)*cos(alpha*0.5)));
-		vec2 half=vec2(-h.y,h.x);
+		vec2 halfv=vec2(-h.y,h.x);
 		
 		float xoff=hlw*tan(alpha*0.5);
 		if(d1.x*d2.y-d1.y*d2.x<0.0)
@@ -118,14 +118,14 @@ void main()
 		gl_FrontColor=gl_FrontColorIn[2];
 		linePos=vec2(d1Len*0.5-xoff,hlw);
 		lineLength=d1Len;
-		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[2]+vec4(half,0.0,0.0));
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[2]+vec4(halfv,0.0,0.0));
 		EmitVertex();
 		
 		/* Emit the bottom left vertex: */
 		gl_FrontColor=gl_FrontColorIn[2];
 		linePos=vec2(d1Len*0.5+xoff,-hlw);
 		lineLength=d1Len;
-		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[2]+vec4(-half,0.0,0.0));
+		gl_Position=gl_ModelViewProjectionMatrix*(gl_PositionIn[2]+vec4(-halfv,0.0,0.0));
 		EmitVertex();
 		}
 	else

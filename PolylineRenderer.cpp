@@ -114,6 +114,7 @@ struct PolylineRenderer::DataItem:public GLObject::DataItem
 	CacheMap cacheMap; // Map of cached polylines
 	GLuint currentBufferId; // ID of currently bound buffer object
 	bool haveCoreGeometryShaders; // Flag whether the OpenGL context supports core feature geometry shaders
+	GLenum primitiveType; // Primitive type for glBegin or glDrawArrays calls
 	GLhandleARB lineShader; // GLSL shader to render anti-aliased lines
 	GLint uniforms[2]; // Locations of the line rendering shader's uniform variables
 	Color currentColor; // Color currently uploaded into the line rendering shader
@@ -164,6 +165,7 @@ PolylineRenderer::DataItem::DataItem(GLContextData& contextData)
 	:cacheMap(17),
 	 currentBufferId(0U),
 	 haveCoreGeometryShaders(contextData.getContext().isVersionLargerEqual(3,2)),
+	 primitiveType(haveCoreGeometryShaders?GL_LINE_STRIP_ADJACENCY:GL_LINE_STRIP_ADJACENCY_ARB),
 	 lineShader(0),
 	 currentColor(0,0,0),currentLineWidth(0),
 	 uploadItem(0),uploadPtr(0),uploadEnd(0)
@@ -404,9 +406,9 @@ void PolylineRenderer::initContext(GLContextData& contextData) const
 		/* Create an ARB geometry shader: */
 		geometryShader=glCompileARBGeometryShader4FromFile(SKETCHPAD_SHADERDIR "/CurveRendererARB.gs");
 		
-		glProgramParameteriARB(dataItem->lineShader,GL_GEOMETRY_INPUT_TYPE_ARB,GL_LINES);
+		glProgramParameteriARB(dataItem->lineShader,GL_GEOMETRY_INPUT_TYPE_ARB,GL_LINES_ADJACENCY_ARB);
 		glProgramParameteriARB(dataItem->lineShader,GL_GEOMETRY_OUTPUT_TYPE_ARB,GL_TRIANGLE_STRIP);
-		glProgramParameteriARB(dataItem->lineShader,GL_GEOMETRY_VERTICES_OUT_ARB,8);
+		glProgramParameteriARB(dataItem->lineShader,GL_GEOMETRY_VERTICES_OUT_ARB,4);
 		}
 	glAttachObjectARB(dataItem->lineShader,geometryShader);
 	glDeleteObjectARB(geometryShader);
@@ -646,7 +648,7 @@ void PolylineRenderer::draw(const void* cacheId,unsigned int version,const Polyl
 	glColor(color);
 	
 	/* Draw the polyline as a line strip with adjacency: */
-	glDrawArrays(GL_LINE_STRIP_ADJACENCY,cmIt->getDest().offset,cmIt->getDest().size);
+	glDrawArrays(myDataItem->primitiveType,cmIt->getDest().offset,cmIt->getDest().size);
 	}
 
 bool PolylineRenderer::draw(const void* cacheId,unsigned int version,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const
@@ -720,7 +722,7 @@ bool PolylineRenderer::draw(const void* cacheId,unsigned int version,const Color
 	else
 		{
 		/* Draw the polyline as a line strip with adjacency: */
-		glDrawArrays(GL_LINE_STRIP_ADJACENCY,cmIt->getDest().offset,cmIt->getDest().size);
+		glDrawArrays(myDataItem->primitiveType,cmIt->getDest().offset,cmIt->getDest().size);
 		}
 	
 	return uploadPolyline;
@@ -810,7 +812,7 @@ void PolylineRenderer::finish(GLObject::DataItem* dataItem) const
 		}
 	
 	/* Draw the polyline as a line strip with adjacency: */
-	glDrawArrays(GL_LINE_STRIP_ADJACENCY,myDataItem->uploadItem->offset,myDataItem->uploadItem->size);
+	glDrawArrays(myDataItem->primitiveType,myDataItem->uploadItem->offset,myDataItem->uploadItem->size);
 	
 	/* Reset upload state: */
 	myDataItem->uploadItem=0;
