@@ -28,6 +28,9 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchGeometry.h"
 #include "SketchObject.h"
 
+/* Forward declarations: */
+class PolylineRenderer;
+
 class Curve:public SketchObject
 	{
 	friend class SketchObjectCreator;
@@ -36,6 +39,7 @@ class Curve:public SketchObject
 	/* Elements: */
 	private:
 	static unsigned int typeCode; // The curve class's type code
+	static PolylineRenderer* renderer; // A renderer to render curves
 	
 	Color color; // Curve's color
 	float lineWidth; // Curve's cosmetic line width
@@ -44,7 +48,10 @@ class Curve:public SketchObject
 	
 	/* Constructors and destructors: */
 	public:
+	static void initClass(unsigned int newTypeCode); // Initializes the curve object class and assigns a unique type code
 	Curve(void); // Creates an empty curve with undefined parameters
+	virtual ~Curve(void);
+	static void deinitClass(void); // De-initializes the curve object class
 	
 	/* Methods from SketchObject: */
 	virtual unsigned int getTypeCode(void) const;

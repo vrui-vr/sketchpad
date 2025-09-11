@@ -38,6 +38,16 @@ unsigned int Group::typeCode=0;
 Methods of class Group:
 **********************/
 
+void Group::initClass(unsigned int newTypeCode)
+	{
+	/* Store the type code: */
+	typeCode=newTypeCode;
+	}
+
+void Group::deinitClass(void)
+	{
+	}
+
 unsigned int Group::getTypeCode(void) const
 	{
 	return typeCode;

@@ -61,7 +61,8 @@ void PaintBucket::select(void)
 
 PaintBucket::PaintBucket(const char* sName,Container* sParent,GLfloat sSize,const Color& sColor,bool sManageChild)
 	:Widget(sName,sParent,false),
-	 size(sSize),color(sColor)
+	 size(sSize),color(sColor),
+	 isArmed(false)
 	{
 	/* Get the style sheet: */
 	const StyleSheet* ss=getStyleSheet();

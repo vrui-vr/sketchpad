@@ -53,14 +53,37 @@ Static elements of class Curve:
 ******************************/
 
 unsigned int Curve::typeCode=0;
+PolylineRenderer* Curve::renderer=0;
 
 /**********************
 Methods of class Curve:
 **********************/
 
+void Curve::initClass(unsigned int newTypeCode)
+	{
+	/* Store the type code: */
+	typeCode=newTypeCode;
+	
+	/* Acquire a reference to the polyline renderer: */
+	renderer=PolylineRenderer::acquire();
+	}
+
 Curve::Curve(void)
 	:version(0)
 	{
+	}
+
+Curve::~Curve(void)
+	{
+	/* Remove this curve from the renderer's cache: */
+	renderer->drop(this);
+	}
+
+void Curve::deinitClass(void)
+	{
+	/* Release the reference to the polyline renderer: */
+	PolylineRenderer::release();
+	renderer=0;
 	}
 
 unsigned int Curve::getTypeCode(void) const
@@ -171,6 +194,7 @@ void Curve::rubout(const Capsule& eraser,SketchObjectContainer& container)
 	/* Check if the curve's beginning vertex lies within the capsule: */
 	std::vector<Point>::iterator p0It=points.begin();
 	bool inside=eraser.isInside(*p0It);
+	bool anyChanges=inside;
 	
 	/* Store the beginning vertex in the outside list if it is outside: */
 	if(!inside)
@@ -219,6 +243,7 @@ void Curve::rubout(const Capsule& eraser,SketchObjectContainer& container)
 				newCurve->color=color;
 				newCurve->lineWidth=lineWidth;
 				std::swap(newCurve->points,outside);
+				++newCurve->version;
 				container.insertAfter(this,newCurve);
 				
 				/* Reset the temporary outside curve: */
@@ -240,6 +265,8 @@ void Curve::rubout(const Capsule& eraser,SketchObjectContainer& container)
 					outside.push_back(*p1It);
 					outsideBox.addPoint(*p1It);
 					}
+				
+				anyChanges=true;
 				}
 			else // Entire segment is outside the capsule
 				{
@@ -257,7 +284,9 @@ void Curve::rubout(const Capsule& eraser,SketchObjectContainer& container)
 		boundingBox=outsideBox;
 		std::swap(points,outside);
 		
-		++version;
+		/* Invalidate the cache if any changes were made: */
+		if(anyChanges)
+			++version;
 		}
 	else
 		{
@@ -315,8 +344,8 @@ void Curve::read(IO::File& file,SketchObjectCreator& creator)
 void Curve::glRenderAction(RenderState& renderState) const
 	{
 	/* Draw the curve using a polyline renderer: */
-	renderState.setRenderer(PolylineRenderer::getTheRenderer());
-	PolylineRenderer::getTheRenderer()->draw(points,color,lineWidth,renderState.getDataItem());
+	renderState.setRenderer(renderer);
+	renderer->draw(this,version,points,color,lineWidth,renderState.getDataItem());
 	}
 
 void Curve::glRenderActionHighlight(Scalar cycle,RenderState& renderState) const
@@ -328,8 +357,8 @@ void Curve::glRenderActionHighlight(Scalar cycle,RenderState& renderState) const
 		highlight[i]=GLubyte(Math::floor(Scalar(color[i])*(Scalar(1)-cycle)+Scalar(highlight[i])*cycle+Scalar(0.5)));
 	
 	/* Draw the curve using a polyline renderer: */
-	renderState.setRenderer(PolylineRenderer::getTheRenderer());
-	PolylineRenderer::getTheRenderer()->draw(points,highlight,lineWidth,renderState.getDataItem());
+	renderState.setRenderer(renderer);
+	renderer->draw(this,version,points,highlight,lineWidth,renderState.getDataItem());
 	}
 
 /*****************************
@@ -504,7 +533,7 @@ void CurveFactory::glRenderAction(RenderState& renderState) const
 	if(current!=0)
 		{
 		/* Draw the currently created curve using a polyline renderer: */
-		renderState.setRenderer(PolylineRenderer::getTheRenderer());
-		PolylineRenderer::getTheRenderer()->draw(current->points,current->color,current->lineWidth,renderState.getDataItem());
+		renderState.setRenderer(Curve::renderer);
+		Curve::renderer->draw(current->points,current->color,current->lineWidth,renderState.getDataItem());
 		}
 	}

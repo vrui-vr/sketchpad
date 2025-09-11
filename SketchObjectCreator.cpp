@@ -23,6 +23,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchObjectCreator.h"
 
 #include <Misc/SizedTypes.h>
+#include <Misc/StdError.h>
 #include <IO/File.h>
 
 #include "Curve.h"
@@ -35,67 +36,51 @@ Methods of class SketchObjectCreator:
 
 SketchObjectCreator::SketchObjectCreator(void)
 	{
-	/* Assign type codes to all sketch object classes: */
-	Curve::typeCode=0;
-	Group::typeCode=1;
-	Image::typeCode=2;
-	
-	/* Initialize sketch object classes that need initialization: */
-	Image::initClass();
+	/* Initialize and assign type codes to all sketch object classes: */
+	Curve::initClass(0);
+	Group::initClass(1);
+	Image::initClass(2);
 	}
 
 SketchObjectCreator::~SketchObjectCreator(void)
 	{
 	/* Deinitialize sketch object classes that need deinitialization: */
+	Curve::deinitClass();
+	Group::deinitClass();
 	Image::deinitClass();
 	}
 
 SketchObject* SketchObjectCreator::createObject(unsigned int typeCode)
 	{
-	switch(typeCode)
-		{
-		case 0:
-			return new Curve;
-			break;
-		
-		case 1:
-			return new Group;
-			break;
-		
-		case 2:
-			return new Image;
-			break;
-		
-		default:
-			return 0;
-		}
-	}
-
-SketchObject* SketchObjectCreator::readObject(IO::File& file)
-	{
 	SketchObject* result=0;
-	
-	/* Read the object's type code: */
-	unsigned int typeCode=file.read<Misc::UInt16>();
-	
-	/* Create the object and read its state: */
 	switch(typeCode)
 		{
 		case 0:
 			result=new Curve;
-			result->read(file,*this);
 			break;
 		
 		case 1:
 			result=new Group;
-			result->read(file,*this);
 			break;
 		
 		case 2:
 			result=new Image;
-			result->read(file,*this);
 			break;
+		
+		default:
+			throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Invalid sketch object type code %u",typeCode);
 		}
+	
+	return result;
+	}
+
+SketchObject* SketchObjectCreator::readObject(IO::File& file)
+	{
+	/* Read the object's type code and create a new object: */
+	SketchObject* result=createObject(file.read<Misc::UInt16>());
+	
+	/* Read the new object's state: */
+	result->read(file,*this);
 	
 	return result;
 	}

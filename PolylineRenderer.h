@@ -25,6 +25,8 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #define POLYLINERENDERER_INCLUDED
 
 #include <vector>
+#include <Threads/Atomic.h>
+#include <Vrui/Vrui.h>
 
 #include "SketchGeometry.h"
 #include "Renderer.h"
@@ -39,12 +41,19 @@ class PolylineRenderer:public Renderer
 	struct DataItem; // Forward declaration of per-context data structure
 	
 	/* Elements: */
-	static PolylineRenderer theRenderer; // Singleton polyline rendering object
+	static PolylineRenderer* theRenderer; // Singleton polyline rendering object
+	static Threads::Atomic<unsigned int> refCount; // Number of references to the singleton polyline rendering object
 	Scalar scaleFactor; // Scale factor from line widths to model space units
+	std::vector<const void*> dropList; // List of deleted items that need to be dropped from the cache during this rendering cycle
+	
+	/* Private methods: */
+	void cleanCache(Vrui::PreRenderingCallbackData* cbData); // Removes all items in the current drop list from the cache
+	void clearDropList(Misc::CallbackData* cbData); // Clears the drop list after a rendering cycle
 	
 	/* Constructors and destructors: */
 	public:
 	PolylineRenderer(void);
+	virtual ~PolylineRenderer(void);
 	
 	/* Methods from class GLObject: */
 	virtual void initContext(GLContextData& contextData) const;
@@ -54,14 +63,15 @@ class PolylineRenderer:public Renderer
 	void deactivate(GLObject::DataItem* dataItem) const;
 	
 	/* New methods: */
-	static PolylineRenderer* getTheRenderer(void) // Returns the singleton rendering object
-		{
-		return &theRenderer;
-		}
+	static PolylineRenderer* acquire(void); // Acquires a reference to the singleton rendering object
+	static void release(void); // Releases a reference to the singleton rendering object
 	void setScaleFactor(Scalar newScaleFactor); // Updates the scale factor from line widths to model space units
 	void draw(const Polyline& polyline,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const; // Renders the given polyline with the given color and line width
-	void cache(const void* cacheId,const Polyline& polyline,GLObject::DataItem* dataItem) const; // Caches the given polyline for future faster drawing
-	void draw(const void* cacheId,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const; // Renders a previously cached polyline with the given color and line width
+	void draw(const void* cacheId,unsigned int version,const Polyline& polyline,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const; // Caches the given polyline and renders it with the given color and line width
+	bool draw(const void* cacheId,unsigned int version,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const; // Renders an already cached polyline or prepares to upload polyline vertices one at a time; returns true if vertices need to be uploaded
+	void addVertex(const Point& vertex,GLObject::DataItem* dataItem) const; // Uploads an additional vertex to the polyline being uploaded
+	void finish(GLObject::DataItem* dataItem) const; // Finishes uploading and draws the polyline being uploaded
+	void drop(const void* cacheId); // Marks the given item to be dropped from the cache during the next rendering cycle
 	};
 
 #endif

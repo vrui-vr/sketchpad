@@ -28,7 +28,8 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 Static elements of class ImageRenderer:
 **************************************/
 
-ImageRenderer ImageRenderer::theRenderer;
+ImageRenderer* ImageRenderer::theRenderer=0;
+Threads::Atomic<unsigned int> ImageRenderer::refCount(0);
 
 /******************************
 Methods of class ImageRenderer:
@@ -52,4 +53,23 @@ void ImageRenderer::deactivate(GLObject::DataItem* dataItem) const
 	/* Reset OpenGL state: */
 	glBindTexture(GL_TEXTURE_RECTANGLE_ARB,0);
 	glPopAttrib();
+	}
+
+ImageRenderer* ImageRenderer::acquire(void)
+	{
+	/* Increase the reference count and create a new singleton object if the reference count was zero: */
+	if(refCount.postAdd(1)==0)
+		theRenderer=new ImageRenderer;
+	
+	return theRenderer;
+	}
+
+void ImageRenderer::release(void)
+	{
+	/* Decrease the reference count and delete the singleton object if the reference count reaches zero: */
+	if(refCount.preSub(1)==0)
+		{
+		delete theRenderer;
+		theRenderer=0;
+		}
 	}

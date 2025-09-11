@@ -36,8 +36,12 @@ class Group:public SketchObject,public SketchObjectContainer
 	private:
 	static unsigned int typeCode; // The group class's type code
 	
-	/* Methods from class SketchObject: */
+	/* Constructors and destructors: */
 	public:
+	static void initClass(unsigned int newTypeCode); // Initializes the group object class and assigns a unique type code
+	static void deinitClass(void); // De-initializes the group object class
+	
+	/* Methods from class SketchObject: */
 	virtual unsigned int getTypeCode(void) const;
 	virtual bool pick(PickResult& result);
 	virtual SketchObject* clone(void) const;

@@ -41,35 +41,42 @@ Static elements of class Image:
 ******************************/
 
 unsigned int Image::typeCode=0;
-Images::TextureSet* Image::textureSet=0;
+ImageRenderer* Image::renderer=0;
 
 /**********************
 Methods of class Image:
 **********************/
 
-void Image::initClass(void)
+void Image::initClass(unsigned int newTypeCode)
 	{
-	/* Create the singleton texture set: */
-	textureSet=new Images::TextureSet;
-	}
-
-void Image::deinitClass(void)
-	{
-	/* Destroy the singleton texture set: */
-	delete textureSet;
-	textureSet=0;
+	/* Store the type code: */
+	typeCode=newTypeCode;
+	
+	/* Acquire a reference to the image renderer: */
+	renderer=ImageRenderer::acquire();
 	}
 
 Image::Image(void)
 	:imageKey(~0x0U)
 	{
+	/* Reference the in-memory image file: */
 	imageFile.ref();
 	}
 
 Image::~Image(void)
 	{
 	/* Destroy the image texture: */
-	textureSet->deleteTexture(imageKey);
+	renderer->getTextureSet().deleteTexture(imageKey);
+	
+	/* Unreference the in-memory image file: */
+	imageFile.unref();
+	}
+
+void Image::deinitClass(void)
+	{
+	/* Release the reference to the image renderer: */
+	ImageRenderer::release();
+	renderer=0;
 	}
 
 unsigned int Image::getTypeCode(void) const
@@ -83,7 +90,7 @@ bool Image::pick(SketchObject::PickResult& result)
 	
 	/* Calculate the image's corner points and pick them: */
 	Point corners[4];
-	const Images::BaseImage& image=textureSet->getTexture(imageKey).getImage();
+	const Images::BaseImage& image=renderer->getTextureSet().getTexture(imageKey).getImage();
 	for(int i=0;i<4;++i)
 		{
 		/* Calculate the corner point in image space: */
@@ -129,8 +136,9 @@ SketchObject* Image::clone(void) const
 	result->imageTransform=imageTransform;
 	
 	/* Clone this image's image data: */
-	const Images::TextureSet::Texture& texture=textureSet->getTexture(imageKey);
-	Images::TextureSet::Texture& resultTexture=textureSet->addTexture(texture.getImage(),texture.getTarget(),texture.getInternalFormat());
+	Images::TextureSet& textureSet=renderer->getTextureSet();
+	const Images::TextureSet::Texture& texture=textureSet.getTexture(imageKey);
+	Images::TextureSet::Texture& resultTexture=textureSet.addTexture(texture.getImage(),texture.getTarget(),texture.getInternalFormat());
 	resultTexture.setWrapModes(texture.getWrapModes()[0],texture.getWrapModes()[1]);
 	resultTexture.setFilterModes(texture.getFilterModes()[0],texture.getFilterModes()[1]);
 	result->imageKey=resultTexture.getKey();
@@ -148,7 +156,8 @@ void Image::transform(const Transformation& transform)
 	/* Pre-multiply the current image transformation and update the bounding box: */
 	imageTransform.leftMultiply(transform);
 	imageTransform.renormalize();
-	const Images::BaseImage& image=textureSet->getTexture(imageKey).getImage();
+	Images::TextureSet& textureSet=renderer->getTextureSet();
+	const Images::BaseImage& image=textureSet.getTexture(imageKey).getImage();
 	boundingBox=Box::empty;
 	boundingBox.addPoint(imageTransform.transform(Point(0,0,0)));
 	boundingBox.addPoint(imageTransform.transform(Point(image.getWidth(),0,0)));
@@ -200,8 +209,9 @@ void Image::read(IO::File& file,SketchObjectCreator& creator)
 	Images::BaseImage image=Images::readGenericImageFile(imageFile,Images::getImageFileFormat(imageFileName.c_str()));
 	
 	/* Add the image to the texture set: */
-	imageKey=Image::textureSet->addTexture(image,GL_TEXTURE_RECTANGLE_ARB,image.getInternalFormat()).getKey();
-	Image::textureSet->getTexture(imageKey).setFilterModes(GL_LINEAR,GL_LINEAR);
+	Images::TextureSet& textureSet=renderer->getTextureSet();
+	imageKey=textureSet.addTexture(image,GL_TEXTURE_RECTANGLE_ARB,image.getInternalFormat()).getKey();
+	textureSet.getTexture(imageKey).setFilterModes(GL_LINEAR,GL_LINEAR);
 	
 	/* Read the image transformation: */
 	imageTransform=Misc::Marshaller<Transformation>::read(file);
@@ -217,10 +227,10 @@ void Image::read(IO::File& file,SketchObjectCreator& creator)
 void Image::glRenderAction(RenderState& renderState) const
 	{
 	/* Select the image renderer: */
-	renderState.setRenderer(ImageRenderer::getTheRenderer());
+	renderState.setRenderer(renderer);
 	
 	/* Retrieve the texture set's OpenGL state: */
-	Images::TextureSet::GLState* glState=textureSet->getGLState(renderState.contextData);
+	Images::TextureSet::GLState* glState=renderer->getTextureSet().getGLState(renderState.contextData);
 	
 	/* Bind the image texture and enable its texture target: */
 	const Images::TextureSet::GLState::Texture& texture=glState->bindTexture(imageKey);
@@ -251,10 +261,10 @@ void Image::glRenderAction(RenderState& renderState) const
 void Image::glRenderActionHighlight(Scalar cycle,RenderState& renderState) const
 	{
 	/* Select the image renderer: */
-	renderState.setRenderer(ImageRenderer::getTheRenderer());
+	renderState.setRenderer(renderer);
 	
 	/* Retrieve the texture set's OpenGL state: */
-	Images::TextureSet::GLState* glState=textureSet->getGLState(renderState.contextData);
+	Images::TextureSet::GLState* glState=renderer->getTextureSet().getGLState(renderState.contextData);
 	
 	/* Calculate a highlight color: */
 	GLfloat highlight[4];
@@ -314,8 +324,9 @@ ImageFactory::ImageFactory(SketchSettings& sSettings,const char* imageFileName,I
 	Images::BaseImage nextImage=Images::readGenericImageFile(next->imageFile,Images::getImageFileFormat(next->imageFileName.c_str()));
 	
 	/* Add the image to the texture set: */
-	next->imageKey=Image::textureSet->addTexture(nextImage,GL_TEXTURE_RECTANGLE_ARB,GL_RGB8).getKey();
-	Image::textureSet->getTexture(next->imageKey).setFilterModes(GL_LINEAR,GL_LINEAR);
+	Images::TextureSet& textureSet=Image::renderer->getTextureSet();
+	next->imageKey=textureSet.addTexture(nextImage,GL_TEXTURE_RECTANGLE_ARB,GL_RGB8).getKey();
+	textureSet.getTexture(next->imageKey).setFilterModes(GL_LINEAR,GL_LINEAR);
 	
 	/* Get the image size: */
 	for(int i=0;i<2;++i)
@@ -414,8 +425,11 @@ void ImageFactory::glRenderAction(RenderState& renderState) const
 		/* Draw the current image at its current size and position: */
 		current->glRenderAction(renderState);
 		
+		/* Draw the current image's bounding box: */
+		renderState.setRenderer(0);
 		glPushAttrib(GL_ENABLE_BIT|GL_POINT_BIT);
 		glPointSize(3.0f);
+		
 		glBegin(GL_POINTS);
 		glColor(settings.getHighlightColor());
 		glVertex(p0);

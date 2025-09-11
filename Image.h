@@ -30,6 +30,9 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchGeometry.h"
 #include "SketchObject.h"
 
+/* Forward declarations: */
+class ImageRenderer;
+
 class Image:public SketchObject
 	{
 	friend class SketchObjectCreator;
@@ -37,17 +40,17 @@ class Image:public SketchObject
 	
 	/* Elements: */
 	static unsigned int typeCode; // The image class's type code
-	static Images::TextureSet* textureSet; // Singleton texture set managing all images in a sketch environment
+	static ImageRenderer* renderer; // A renderer to render images
 	std::string imageFileName; // Original name of the image file
 	IO::VariableMemoryFile imageFile; // In-memory file containing the (compressed) image data
 	Images::TextureSet::Key imageKey; // Key to retrieve image's image data
 	Transformation imageTransform; // Transformation from image's pixel space into sketch environment
 	
 	/* Constructors and destructors: */
-	static void initClass(void); // Initializes the Image object class
-	static void deinitClass(void); // De-initializes the Image object class
+	static void initClass(unsigned int newTypeCode); // Initializes the image object class and assigns a unique type code
 	Image(void); // Creates an empty image
 	virtual ~Image(void); // Destroys the image
+	static void deinitClass(void); // De-initializes the image object class
 	
 	/* Methods from SketchObject: */
 	public:

@@ -23,13 +23,18 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #ifndef IMAGERENDERER_INCLUDED
 #define IMAGERENDERER_INCLUDED
 
+#include <Threads/Atomic.h>
+#include <Images/TextureSet.h>
+
 #include "Renderer.h"
 
 class ImageRenderer:public Renderer
 	{
 	/* Elements: */
 	private:
-	static ImageRenderer theRenderer; // Singleton image rendering object
+	static ImageRenderer* theRenderer; // Singleton image rendering object
+	static Threads::Atomic<unsigned int> refCount; // Number of references to the singleton image rendering object
+	Images::TextureSet textureSet; // Texture set managing all current images
 	
 	/* Methods from class GLObject: */
 	virtual void initContext(GLContextData& contextData) const;
@@ -40,9 +45,11 @@ class ImageRenderer:public Renderer
 	virtual void deactivate(GLObject::DataItem* dataItem) const;
 	
 	/* New methods: */
-	static ImageRenderer* getTheRenderer(void) // Returns the singleton rendering object
+	static ImageRenderer* acquire(void); // Acquires a reference to the singleton rendering object
+	static void release(void); // Releases a reference to the singleton rendering object
+	Images::TextureSet& getTextureSet(void) // Returns the texture set
 		{
-		return &theRenderer;
+		return textureSet;
 		}
 	};
 
