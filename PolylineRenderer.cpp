@@ -701,7 +701,7 @@ void PolylineRenderer::addVertex(const Point& vertex,GLObject::DataItem* dataIte
 	if(myDataItem->uploadPtr==myDataItem->uploadEnd)
 		{
 		/* Allocate another memory chunk: */
-		DataItem::CacheItem newItem=myDataItem->allocateLargest((myDataItem->uploadNumVertices*4U)/3U+1U); // Geometric growth to achieve O(N) upload time
+		DataItem::CacheItem newItem=myDataItem->allocateLargest((myDataItem->uploadItem->size*4U)/3U+1U); // Geometric growth to achieve O(N) upload time
 		newItem.version=myDataItem->uploadItem->version;
 		
 		/* Copy already-uploaded vertices from the current into the new memory chunk: */
@@ -716,7 +716,6 @@ void PolylineRenderer::addVertex(const Point& vertex,GLObject::DataItem* dataIte
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB,myDataItem->currentBufferId);
 			
 			/* Reset the vertex pointers into the new memory block: */
-			glNormalPointer(GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+0);
 			glVertexPointer(3,GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+3);
 			}
 		

@@ -72,11 +72,42 @@ class Spline:public SketchObject
 
 class SplineFactory:public SketchObjectFactory
 	{
-	/* Elements: */
+	/* Embedded classes: */
 	private:
+	struct InputPoint
+		{
+		/* Elements: */
+		public:
+		Point pos; // Input point's position
+		Scalar tolerance2; // Input point's squared tolerance
+		Scalar dist; // Distance to the previous input point
+		Scalar param; // Input point's current spline parameter
+		
+		/* Constructors and destructors: */
+		InputPoint(const Point& sPos,Scalar sTolerance,Scalar sDist,Scalar sParam)
+			:pos(sPos),tolerance2(Math::sqr(sTolerance)),dist(sDist),param(sParam)
+			{
+			}
+		};
+	
+	typedef std::vector<InputPoint> InputCurve; // Type for input curves
+	
+	/* Elements: */
 	Spline* current; // The currently created spline, or 0 if not creating a spline
-	bool lineMode; // Flag whether the factory has changed mode to line drawing
+	Box fixedBox; // The bounding box of the fixed part of the currently created spline
 	bool lastLinger; // Flag if the tool was lingering during the previous motion callback
+	InputCurve inputCurve; // List of input points associated with the active "unfixed" spline segment
+	double inputCurveLength; // Length of the current input curve
+	Point controlPoints[4]; // The control point array of the active "unfixed" spline segment
+	bool g1; // Flag if the active spline segment should link to the previous one with G1 continuity
+	Vector t0; // Normalized start tangent vector of the active spline segment if it should link with G1 continuity
+	
+	/* Private methods: */
+	void fitLinear(Point c[4],const Point& c0,const Point& c3) const;
+	void fitQuadratic(Point c[4],const Point& c0,const Point& c3) const;
+	void fitCubic(Point c[4],const Point& c0,const Point& c3) const;
+	void fitQuadraticG1(Point c[4],const Point& c0,const Vector& t0,const Point& c3) const;
+	void fitCubicG1(Point c[4],const Point& c0,const Vector& t0,const Point& c3) const;
 	
 	/* Constructors and destructors: */
 	public:

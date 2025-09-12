@@ -53,6 +53,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchObject.h"
 #include "Curve.h"
 #include "Image.h"
+#include "Spline.h"
 #include "PaintBucket.h"
 #include "SketchPadTool.h"
 #include "SketchTool.h"
@@ -740,8 +741,13 @@ SketchObjectFactory* SketchPad::getSketchFactory(void)
 		}
 	else
 		{
+		#if 0
 		/* Return a new curve factory: */
 		return new CurveFactory(settings);
+		#else
+		/* Return a new spline factory: */
+		return new SplineFactory(settings);
+		#endif
 		}
 	}
 
