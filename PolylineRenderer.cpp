@@ -506,54 +506,14 @@ void PolylineRenderer::draw(const PolylineRenderer::Polyline& polyline,const Col
 	
 	/* Draw the polyline: */
 	glColor(color);
-	if(polyline.size()>2)
-		{
-		/* Draw the polyline as a line strip: */
-		glBegin(GL_LINE_STRIP);
-		Polyline::const_iterator p0It=polyline.begin();
-		glNormal3f(0.0f,0.0f,0.0f);
-		glVertex(*p0It);
-		
-		Polyline::const_iterator p1It=p0It+1;
-		Vector v0=*p1It-*p0It;
-		v0.normalize();
-		for(p0It=p1It,++p1It;p1It!=polyline.end();p0It=p1It,++p1It)
-			{
-			/* Calculate the separating normal vector between the two adjacent line segments: */
-			Vector v1=*p1It-*p0It;
-			v1.normalize();
-			if(v0*v1>=Scalar(0))
-				glNormal(v0+v1);
-			else
-				glNormal3f(0.0f,0.0f,0.0f);
-			glVertex(*p0It);
-			
-			/* Go to the next line segment: */
-			v0=v1;
-			}
-		
-		glNormal3f(0.0f,0.0f,0.0f);
-		glVertex(*p0It);
-		glEnd();
-		}
-	else if(polyline.size()==2)
-		{
-		/* Draw a single line segment: */
-		glBegin(GL_LINES);
-		glNormal3f(0.0f,0.0f,0.0f);
-		glVertex(polyline[0]);
-		glVertex(polyline[1]);
-		glEnd();
-		}
-	else
-		{
-		/* Draw a single point as a line with identical end points: */
-		glBegin(GL_LINES);
-		glNormal3f(0.0f,0.0f,0.0f);
-		glVertex(polyline[0]);
-		glVertex(polyline[0]);
-		glEnd();
-		}
+	glBegin(myDataItem->primitiveType);
+	glVertex(polyline.front());
+	for(Polyline::const_iterator pIt=polyline.begin();pIt!=polyline.end();++pIt)
+		glVertex(*pIt);
+	if(polyline.size()==1U)
+		glVertex(polyline.back());
+	glVertex(polyline.back());
+	glEnd();
 	}
 
 void PolylineRenderer::draw(const void* cacheId,unsigned int version,const PolylineRenderer::Polyline& polyline,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const

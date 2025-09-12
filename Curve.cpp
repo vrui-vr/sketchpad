@@ -23,23 +23,8 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "Curve.h"
 
 #include <Misc/SizedTypes.h>
-#include <Misc/StdError.h>
 #include <IO/File.h>
 #include <Math/Math.h>
-#include <GL/gl.h>
-#include <GL/GLColorTemplates.h>
-#include <GL/GLContextData.h>
-#include <GL/GLObject.h>
-#include <GL/Extensions/GLARBShaderObjects.h>
-#include <GL/Extensions/GLARBVertexShader.h>
-#include <GL/Extensions/GLARBGeometryShader4.h>
-#include <GL/Extensions/GLARBFragmentShader.h>
-#include <GL/Extensions/GLEXTGeometryShader4.h>
-#include <GL/GLGeometryWrappers.h>
-#include <Vrui/Vrui.h>
-#include <Vrui/DisplayState.h>
-#include <Vrui/VRScreen.h>
-#include <Vrui/VRWindow.h>
 
 #include "Config.h"
 #include "Capsule.h"
@@ -532,5 +517,12 @@ void CurveFactory::glRenderAction(RenderState& renderState) const
 	{
 	/* Draw the current curve if it exists: */
 	if(current!=0)
+		#if 0
 		current->glRenderAction(renderState);
+		#else
+		{
+		renderState.setRenderer(Curve::renderer);
+		Curve::renderer->draw(current->points,current->color,current->lineWidth,renderState.getDataItem());
+		}
+		#endif
 	}
