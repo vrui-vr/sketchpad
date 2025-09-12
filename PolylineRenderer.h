@@ -59,8 +59,8 @@ class PolylineRenderer:public Renderer
 	virtual void initContext(GLContextData& contextData) const;
 	
 	/* Methods from class Renderer: */
-	GLObject::DataItem* activate(GLContextData& contextData) const;
-	void deactivate(GLObject::DataItem* dataItem) const;
+	GLObject::DataItem* activate(RenderState& renderState) const;
+	void deactivate(GLObject::DataItem* dataItem,RenderState& renderState) const;
 	
 	/* New methods: */
 	static PolylineRenderer* acquire(void); // Acquires a reference to the singleton rendering object

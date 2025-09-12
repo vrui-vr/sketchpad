@@ -39,6 +39,8 @@ class Group:public SketchObject,public SketchObjectContainer
 	/* Constructors and destructors: */
 	public:
 	static void initClass(unsigned int newTypeCode); // Initializes the group object class and assigns a unique type code
+	Group(void); // Creates an empty group
+	Group(IO::File& file,const SketchObjectCreator& creator); // Creates a group by reading from the given file
 	static void deinitClass(void); // De-initializes the group object class
 	
 	/* Methods from class SketchObject: */
@@ -50,7 +52,6 @@ class Group:public SketchObject,public SketchObjectContainer
 	virtual void snapToGrid(Scalar gridSize);
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container);
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const;
-	virtual void read(IO::File& file,SketchObjectCreator& creator);
 	virtual void glRenderAction(RenderState& renderState) const;
 	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const;
 	

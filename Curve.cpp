@@ -23,6 +23,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "Curve.h"
 
 #include <Misc/SizedTypes.h>
+#include <Misc/StdError.h>
 #include <IO/File.h>
 #include <Math/Math.h>
 
@@ -53,9 +54,53 @@ void Curve::initClass(unsigned int newTypeCode)
 	renderer=PolylineRenderer::acquire();
 	}
 
-Curve::Curve(void)
+Curve::Curve(const Color& sColor,Scalar sLineWidth,const Point& firstVertex)
+	:color(sColor),lineWidth(sLineWidth),
+	 version(0)
+	{
+	/* Append the first curve vertex: */
+	points.push_back(firstVertex);
+	boundingBox.addPoint(firstVertex);
+	
+	++version;
+	}
+
+Curve::Curve(const Color& sColor,Scalar sLineWidth,std::vector<Point>& sPoints,const Box& sBoundingBox)
+	:color(sColor),lineWidth(sLineWidth),
+	 version(0)
+	{
+	/* Take the given vertex list and bounding box: */
+	std::swap(points,sPoints);
+	boundingBox=sBoundingBox;
+	
+	++version;
+	}
+
+Curve::Curve(IO::File& file)
 	:version(0)
 	{
+	/* Read the color and line width: */
+	for(int i=0;i<4;++i)
+		color[i]=file.read<Misc::UInt8>();
+	lineWidth=file.read<Misc::Float32>();
+	
+	/* Read the number of points: */
+	size_t numPoints=file.read<Misc::UInt16>();
+	if(numPoints==0U)
+		throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Invalid number of curve points");
+	
+	/* Read the point list and calculate the bounding box: */
+	points.reserve(numPoints);
+	for(size_t i=0;i<numPoints;++i)
+		{
+		Point p;
+		for(int j=0;j<3;++j)
+			p[j]=file.read<Misc::Float32>();
+		points.push_back(p);
+		boundingBox.addPoint(p);
+		}
+	
+	++version;
 	}
 
 Curve::~Curve(void)
@@ -100,16 +145,8 @@ bool Curve::pick(SketchObject::PickResult& result)
 
 SketchObject* Curve::clone(void) const
 	{
-	/* Create a new curve object: */
-	Curve* result=new Curve;
-	
-	/* Copy this curve's bounding box, parameters, and point vector: */
-	result->boundingBox=boundingBox;
-	result->color=color;
-	result->lineWidth=lineWidth;
-	result->points=points;
-	
-	return result;
+	/* Return a new curve object: */
+	return new Curve(*this);
 	}
 
 void Curve::applySettings(const SketchSettings& settings)
@@ -223,12 +260,7 @@ void Curve::rubout(const Capsule& eraser,SketchObjectContainer& container)
 				outsideBox.addPoint(entry);
 				
 				/* Create a new curve object with the outside curve and insert it into the sketch object list after this one: */
-				Curve* newCurve=new Curve;
-				newCurve->boundingBox=outsideBox;
-				newCurve->color=color;
-				newCurve->lineWidth=lineWidth;
-				std::swap(newCurve->points,outside);
-				++newCurve->version;
+				Curve* newCurve=new Curve(color,lineWidth,outside,outsideBox);
 				container.insertAfter(this,newCurve);
 				
 				/* Reset the temporary outside curve: */
@@ -296,36 +328,6 @@ void Curve::write(IO::File& file,const SketchObjectCreator& creator) const
 			file.write<Misc::Float32>((*pIt)[i]);
 	}
 
-void Curve::read(IO::File& file,SketchObjectCreator& creator)
-	{
-	/* Read the color and line width: */
-	for(int i=0;i<4;++i)
-		color[i]=file.read<Misc::UInt8>();
-	lineWidth=file.read<Misc::Float32>();
-	
-	/* Read the number of points: */
-	size_t numPoints=file.read<Misc::UInt16>();
-	
-	/* Read a new point vector and calculate a new bounding box: */
-	std::vector<Point> newPoints;
-	newPoints.reserve(numPoints);
-	Box newBoundingBox=Box::empty;
-	for(size_t i=0;i<numPoints;++i)
-		{
-		Point p;
-		for(int j=0;j<3;++j)
-			p[j]=file.read<Misc::Float32>();
-		newPoints.push_back(p);
-		newBoundingBox.addPoint(p);
-		}
-	
-	/* Swap the old and new bounding box and point vector: */
-	boundingBox=newBoundingBox;
-	std::swap(points,newPoints);
-	
-	++version;
-	}
-
 void Curve::glRenderAction(RenderState& renderState) const
 	{
 	/* Draw the curve using a polyline renderer: */
@@ -367,17 +369,10 @@ void CurveFactory::buttonDown(const Point& pos)
 	{
 	/* Delete a pending current curve and start a new one: */
 	delete current;
-	current=new Curve;
-	current->color=settings.getColor();
-	current->lineWidth=settings.getLineWidth();
+	current=new Curve(settings.getColor(),settings.getLineWidth(),pos);
 	
 	/* Revert to curve mode: */
 	lineMode=false;
-	
-	/* Append the first curve point: */
-	current->points.push_back(pos);
-	current->boundingBox.addPoint(pos);
-	++current->version;
 	
 	/* Reset the curve suffix: */
 	curveLast=pos;
@@ -421,21 +416,13 @@ void CurveFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood
 		if(firstNeighborhood||straight)
 			{
 			/* Create the line: */
-			Curve* line=new Curve;
-			line->color=current->color;
-			line->lineWidth=current->lineWidth;
+			Curve* line=new Curve(current->color,current->lineWidth,current->points.front());
 			
-			/* Find the line's starting point: */
-			Point first=current->points.front();
+			/* Snap the first curve point to nearby sketch objects if the pen hasn't moved yet: */
 			if(firstNeighborhood)
-				{
-				/* Snap the first curve point to nearby sketch objects: */
-				first=settings.snap(first);
-				}
+				line->points.front()=settings.snap(line->points.front());
 			
-			/* Create the line: */
-			line->points.push_back(first);
-			line->boundingBox.addPoint(first);
+			/* Add the current position as the line's end point: */
 			line->points.push_back(pos);
 			++line->version;
 			

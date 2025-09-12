@@ -22,6 +22,13 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 
 #include "RenderState.h"
 
+#include <Math/Math.h>
+#include <Geometry/OrthogonalTransformation.h>
+#include <Vrui/Vrui.h>
+#include <Vrui/VRScreen.h>
+#include <Vrui/VRWindow.h>
+#include <Vrui/DisplayState.h>
+
 /****************************
 Methods of class RenderState:
 ****************************/
@@ -30,13 +37,19 @@ RenderState::RenderState(GLContextData& sContextData)
 	:contextData(sContextData),
 	 activeRenderer(0),activeDataItem(0)
 	{
+	/* Calculate the current window's pixel size in model coordinate units: */
+	const Vrui::DisplayState& ds=Vrui::getDisplayState(contextData);
+	const Vrui::Scalar* panRect=ds.window->getPanRect();
+	Vrui::Scalar pw=ds.screen->getWidth()*(panRect[1]-panRect[0])/Vrui::Scalar(ds.viewport.size[0]);
+	Vrui::Scalar ph=ds.screen->getHeight()*(panRect[3]-panRect[2])/Vrui::Scalar(ds.viewport.size[1]);
+	pixelSize=Scalar(Math::sqrt(pw*ph)*Vrui::getInverseNavigationTransformation().getScaling());
 	}
 
 RenderState::~RenderState(void)
 	{
 	/* Deactivate the current renderer: */
 	if(activeRenderer!=0)
-		activeRenderer->deactivate(activeDataItem);
+		activeRenderer->deactivate(activeDataItem,*this);
 	}
 
 bool RenderState::setRenderer(const Renderer* newRenderer)
@@ -46,13 +59,13 @@ bool RenderState::setRenderer(const Renderer* newRenderer)
 		{
 		/* Deactivate the current renderer: */
 		if(activeRenderer!=0)
-			activeRenderer->deactivate(activeDataItem);
+			activeRenderer->deactivate(activeDataItem,*this);
 		activeDataItem=0;
 		
 		/* Set and activate the new renderer: */
 		activeRenderer=newRenderer;
 		if(activeRenderer!=0)
-			activeDataItem=activeRenderer->activate(contextData);
+			activeDataItem=activeRenderer->activate(*this);
 		}
 	
 	return result;

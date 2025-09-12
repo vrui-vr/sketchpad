@@ -49,6 +49,7 @@ class Image:public SketchObject
 	/* Constructors and destructors: */
 	static void initClass(unsigned int newTypeCode); // Initializes the image object class and assigns a unique type code
 	Image(void); // Creates an empty image
+	Image(IO::File& file); // Creates an image by reading from the given file
 	virtual ~Image(void); // Destroys the image
 	static void deinitClass(void); // De-initializes the image object class
 	
@@ -62,7 +63,6 @@ class Image:public SketchObject
 	virtual void snapToGrid(Scalar gridSize);
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container);
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const;
-	virtual void read(IO::File& file,SketchObjectCreator& creator);
 	virtual void glRenderAction(RenderState& renderState) const;
 	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const;
 	};

@@ -63,6 +63,41 @@ Image::Image(void)
 	imageFile.ref();
 	}
 
+Image::Image(IO::File& file)
+	:imageKey(~0x0U)
+	{
+	/* Read the image file name: */
+	imageFileName=Misc::Marshaller<std::string>::read(file);
+	
+	/* Read the source image file: */
+	size_t imageFileSize=file.read<Misc::UInt32>();
+	while(imageFileSize>0)
+		{
+		void* readBuffer;
+		size_t readSize=file.readInBuffer(readBuffer,imageFileSize);
+		imageFile.writeRaw(readBuffer,readSize);
+		imageFileSize-=readSize;
+		}
+	imageFile.flush();
+	
+	/* Load the image from the memory buffer: */
+	Images::BaseImage image=Images::readGenericImageFile(imageFile,Images::getImageFileFormat(imageFileName.c_str()));
+	
+	/* Add the image to the texture set: */
+	Images::TextureSet& textureSet=renderer->getTextureSet();
+	imageKey=textureSet.addTexture(image,GL_TEXTURE_RECTANGLE_ARB,image.getInternalFormat()).getKey();
+	textureSet.getTexture(imageKey).setFilterModes(GL_LINEAR,GL_LINEAR);
+	
+	/* Read the image transformation: */
+	imageTransform=Misc::Marshaller<Transformation>::read(file);
+	
+	/* Calculate the image bounding box: */
+	boundingBox.addPoint(imageTransform.transform(Point(0,0,0)));
+	boundingBox.addPoint(imageTransform.transform(Point(image.getWidth(),0,0)));
+	boundingBox.addPoint(imageTransform.transform(Point(image.getWidth(),image.getHeight(),0)));
+	boundingBox.addPoint(imageTransform.transform(Point(0,image.getHeight(),0)));
+	}
+
 Image::~Image(void)
 	{
 	/* Destroy the image texture: */
@@ -187,41 +222,6 @@ void Image::write(IO::File& file,const SketchObjectCreator& creator) const
 	
 	/* Write the image transformation: */
 	Misc::Marshaller<Transformation>::write(imageTransform,file);
-	}
-
-void Image::read(IO::File& file,SketchObjectCreator& creator)
-	{
-	/* Read the image file name: */
-	imageFileName=Misc::Marshaller<std::string>::read(file);
-	
-	/* Read the source image file: */
-	size_t imageFileSize=file.read<Misc::UInt32>();
-	while(imageFileSize>0)
-		{
-		void* readBuffer;
-		size_t readSize=file.readInBuffer(readBuffer,imageFileSize);
-		imageFile.writeRaw(readBuffer,readSize);
-		imageFileSize-=readSize;
-		}
-	imageFile.flush();
-	
-	/* Load the image from the memory buffer: */
-	Images::BaseImage image=Images::readGenericImageFile(imageFile,Images::getImageFileFormat(imageFileName.c_str()));
-	
-	/* Add the image to the texture set: */
-	Images::TextureSet& textureSet=renderer->getTextureSet();
-	imageKey=textureSet.addTexture(image,GL_TEXTURE_RECTANGLE_ARB,image.getInternalFormat()).getKey();
-	textureSet.getTexture(imageKey).setFilterModes(GL_LINEAR,GL_LINEAR);
-	
-	/* Read the image transformation: */
-	imageTransform=Misc::Marshaller<Transformation>::read(file);
-	
-	/* Calculate the image bounding box: */
-	boundingBox=Box::empty;
-	boundingBox.addPoint(imageTransform.transform(Point(0,0,0)));
-	boundingBox.addPoint(imageTransform.transform(Point(image.getWidth(),0,0)));
-	boundingBox.addPoint(imageTransform.transform(Point(image.getWidth(),image.getHeight(),0)));
-	boundingBox.addPoint(imageTransform.transform(Point(0,image.getHeight(),0)));
 	}
 
 void Image::glRenderAction(RenderState& renderState) const

@@ -37,8 +37,7 @@ class SketchObjectCreator
 	~SketchObjectCreator(void); // Destroys all sketch object classes
 	
 	/* Methods: */
-	SketchObject* createObject(unsigned int typeCode); // Returns a new object of a class matching the given type code
-	SketchObject* readObject(IO::File& file); // Reads a sketch object from the given file
+	SketchObject* readObject(IO::File& file) const; // Reads a sketch object from the given file
 	void writeObject(const SketchObject* object,IO::File& file) const; // Writes the given sketch object to the given file
 	};
 

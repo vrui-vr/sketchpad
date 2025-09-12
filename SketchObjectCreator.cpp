@@ -29,6 +29,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "Curve.h"
 #include "Group.h"
 #include "Image.h"
+#include "Spline.h"
 
 /************************************
 Methods of class SketchObjectCreator:
@@ -40,6 +41,7 @@ SketchObjectCreator::SketchObjectCreator(void)
 	Curve::initClass(0);
 	Group::initClass(1);
 	Image::initClass(2);
+	Spline::initClass(3);
 	}
 
 SketchObjectCreator::~SketchObjectCreator(void)
@@ -48,39 +50,36 @@ SketchObjectCreator::~SketchObjectCreator(void)
 	Curve::deinitClass();
 	Group::deinitClass();
 	Image::deinitClass();
+	Spline::deinitClass();
 	}
 
-SketchObject* SketchObjectCreator::createObject(unsigned int typeCode)
+SketchObject* SketchObjectCreator::readObject(IO::File& file) const
 	{
 	SketchObject* result=0;
+	
+	/* Read the object's type code and create a new object: */
+	unsigned int typeCode=file.read<Misc::UInt16>();
 	switch(typeCode)
 		{
 		case 0:
-			result=new Curve;
+			result=new Curve(file);
 			break;
 		
 		case 1:
-			result=new Group;
+			result=new Group(file,*this);
 			break;
 		
 		case 2:
-			result=new Image;
+			result=new Image(file);
+			break;
+		
+		case 3:
+			result=new Spline(file);
 			break;
 		
 		default:
 			throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Invalid sketch object type code %u",typeCode);
 		}
-	
-	return result;
-	}
-
-SketchObject* SketchObjectCreator::readObject(IO::File& file)
-	{
-	/* Read the object's type code and create a new object: */
-	SketchObject* result=createObject(file.read<Misc::UInt16>());
-	
-	/* Read the new object's state: */
-	result->read(file,*this);
 	
 	return result;
 	}

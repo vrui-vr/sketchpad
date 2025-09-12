@@ -38,12 +38,9 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GL/Extensions/GLARBGeometryShader4.h>
 #include <GL/Extensions/GLARBFragmentShader.h>
 #include <GL/GLGeometryWrappers.h>
-#include <Vrui/Vrui.h>
-#include <Vrui/VRScreen.h>
-#include <Vrui/VRWindow.h>
-#include <Vrui/DisplayState.h>
 
 #include "Config.h"
+#include "RenderState.h"
 
 /************************************************
 Declaration of struct PolylineRenderer::DataItem:
@@ -422,10 +419,10 @@ void PolylineRenderer::initContext(GLContextData& contextData) const
 	dataItem->uniforms[1]=glGetUniformLocationARB(dataItem->lineShader,"pixelSize");
 	}
 
-GLObject::DataItem* PolylineRenderer::activate(GLContextData& contextData) const
+GLObject::DataItem* PolylineRenderer::activate(RenderState& renderState) const
 	{
 	/* Retrieve the context data item: */
-	DataItem* dataItem=contextData.retrieveDataItem<DataItem>(this);
+	DataItem* dataItem=renderState.contextData.retrieveDataItem<DataItem>(this);
 	
 	/* Enable vertex array rendering: */
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -436,22 +433,14 @@ GLObject::DataItem* PolylineRenderer::activate(GLContextData& contextData) const
 	/* Upload the current line width: */
 	glUniform1fARB(dataItem->uniforms[0],dataItem->currentLineWidth*scaleFactor);
 	
-	/* Calculate this display's pixel size in model coordinate units: */
-	const Vrui::DisplayState& ds=Vrui::getDisplayState(contextData);
-	const Vrui::Scalar* panRect=ds.window->getPanRect();
-	Vrui::Scalar pw=ds.screen->getWidth()*(panRect[1]-panRect[0])/Vrui::Scalar(ds.viewport.size[0]);
-	Vrui::Scalar ph=ds.screen->getHeight()*(panRect[3]-panRect[2])/Vrui::Scalar(ds.viewport.size[1]);
-	Vrui::Scalar pixelSize=Math::sqrt(pw*ph);
-	pixelSize*=Vrui::getInverseNavigationTransformation().getScaling();
-	
-	/* Upload the pixel size: */
-	glUniform1fARB(dataItem->uniforms[1],float(pixelSize));
+	/* Upload the current pixel size: */
+	glUniform1fARB(dataItem->uniforms[1],float(renderState.getPixelSize()));
 	
 	/* Return the context data item: */
 	return dataItem;
 	}
 
-void PolylineRenderer::deactivate(GLObject::DataItem* dataItem) const
+void PolylineRenderer::deactivate(GLObject::DataItem* dataItem,RenderState& renderState) const
 	{
 	/* Retrieve the data item: */
 	DataItem* myDataItem=static_cast<DataItem*>(dataItem);

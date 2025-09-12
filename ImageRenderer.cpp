@@ -39,7 +39,7 @@ void ImageRenderer::initContext(GLContextData& contextData) const
 	{
 	}
 
-GLObject::DataItem* ImageRenderer::activate(GLContextData& contextData) const
+GLObject::DataItem* ImageRenderer::activate(RenderState&) const
 	{
 	/* Set up OpenGL state: */
 	glPushAttrib(GL_ENABLE_BIT|GL_TEXTURE_BIT);
@@ -48,7 +48,7 @@ GLObject::DataItem* ImageRenderer::activate(GLContextData& contextData) const
 	return 0;
 	}
 
-void ImageRenderer::deactivate(GLObject::DataItem* dataItem) const
+void ImageRenderer::deactivate(GLObject::DataItem*,RenderState&) const
 	{
 	/* Reset OpenGL state: */
 	glBindTexture(GL_TEXTURE_RECTANGLE_ARB,0);

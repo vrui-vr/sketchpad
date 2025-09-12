@@ -42,14 +42,18 @@ class Curve:public SketchObject
 	static PolylineRenderer* renderer; // A renderer to render curves
 	
 	Color color; // Curve's color
-	float lineWidth; // Curve's cosmetic line width
+	Scalar lineWidth; // Curve's cosmetic line width
 	std::vector<Point> points; // Vector of curve points
 	unsigned int version; // Version number of curve point list
 	
 	/* Constructors and destructors: */
 	public:
 	static void initClass(unsigned int newTypeCode); // Initializes the curve object class and assigns a unique type code
-	Curve(void); // Creates an empty curve with undefined parameters
+	Curve(const Color& sColor,Scalar sLineWidth,const Point& firstVertex); // Creates a curve with the given color and line width and single vertex
+	private:
+	Curve(const Color& sColor,Scalar sLineWidth,std::vector<Point>& sPoints,const Box& sBoundingBox); // Creates a curve with the given color and line width and vertex list and bounding box; replaces given list with empty list
+	public:
+	Curve(IO::File& file); // Creates a curve by reading from the given file
 	virtual ~Curve(void);
 	static void deinitClass(void); // De-initializes the curve object class
 	
@@ -62,7 +66,6 @@ class Curve:public SketchObject
 	virtual void snapToGrid(Scalar gridSize);
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container);
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const;
-	virtual void read(IO::File& file,SketchObjectCreator& creator);
 	virtual void glRenderAction(RenderState& renderState) const;
 	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const;
 	};

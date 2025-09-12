@@ -162,7 +162,6 @@ class SketchObject
 	virtual void snapToGrid(Scalar gridSize) =0; // Snaps the sketch object to a grid of the given grid spacing
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container) =0; // Erases the part of the object that lies within the capsule defined by the two center points and the radius
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const =0; // Writes the sketch object to the given binary file
-	virtual void read(IO::File& file,SketchObjectCreator& creator) =0; // Reads the sketch object from the given binary file
 	virtual void glRenderAction(RenderState& renderState) const =0; // Renders the sketch object
 	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const =0; // Highlights the sketch object
 	};

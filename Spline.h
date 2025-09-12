@@ -42,14 +42,18 @@ class Spline:public SketchObject
 	static PolylineRenderer* renderer; // A renderer to render spline
 	
 	Color color; // Spline's color
-	float lineWidth; // Spline's cosmetic line width
+	Scalar lineWidth; // Spline's cosmetic line width
 	std::vector<Point> points; // Vector of 1+n*3 spline control points
 	unsigned int version; // Version number of control point list
+	
+	/* Private methods: */
+	static void subdivide(const Point cps[4],RenderState& renderState); // Renders the spline as a polyline using recursive subdivision
 	
 	/* Constructors and destructors: */
 	public:
 	static void initClass(unsigned int newTypeCode); // Initializes the spline object class and assigns a unique type code
-	Spline(void); // Creates an empty spline with undefined parameters
+	Spline(const Color& sColor,Scalar sLineWidth,const Point cps[4]); // Creates a single-segment spline with the given color, line width, and initial control point array
+	Spline(IO::File& file); // Creates a spline by reading from the given file
 	virtual ~Spline(void);
 	static void deinitClass(void); // De-initializes the spline object class
 	
@@ -62,7 +66,6 @@ class Spline:public SketchObject
 	virtual void snapToGrid(Scalar gridSize);
 	virtual void rubout(const Capsule& eraser,SketchObjectContainer& container);
 	virtual void write(IO::File& file,const SketchObjectCreator& creator) const;
-	virtual void read(IO::File& file,SketchObjectCreator& creator);
 	virtual void glRenderAction(RenderState& renderState) const;
 	virtual void glRenderActionHighlight(Scalar cycle,RenderState& renderState) const;
 	};

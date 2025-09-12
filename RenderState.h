@@ -23,6 +23,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #ifndef RENDERSTATE_INCLUDED
 #define RENDERSTATE_INCLUDED
 
+#include "SketchGeometry.h"
 #include "Renderer.h"
 
 /* Forward declarations: */
@@ -34,6 +35,7 @@ class RenderState
 	public:
 	GLContextData& contextData; // OpenGL context in which this render state operates
 	private:
+	Scalar pixelSize; // Size of a pixel in the current window in model coordinate units
 	const Renderer* activeRenderer; // The currently active sketch object renderer
 	GLObject::DataItem* activeDataItem; // The per-context state of the currently active renderer
 	
@@ -43,6 +45,10 @@ class RenderState
 	~RenderState(void);
 	
 	/* Methods: */
+	Scalar getPixelSize(void) const // Returns the current pixel size in model coordinate units
+		{
+		return pixelSize;
+		}
 	bool setRenderer(const Renderer* newRenderer); // Sets the given renderer; returns true if the renderer changed
 	const Renderer* getRenderer(void) // Returns the active renderer
 		{

@@ -41,8 +41,8 @@ class ImageRenderer:public Renderer
 	
 	/* Methods from class Renderer: */
 	public:
-	virtual GLObject::DataItem* activate(GLContextData& contextData) const;
-	virtual void deactivate(GLObject::DataItem* dataItem) const;
+	virtual GLObject::DataItem* activate(RenderState& renderState) const;
+	virtual void deactivate(GLObject::DataItem* dataItem,RenderState& renderState) const;
 	
 	/* New methods: */
 	static ImageRenderer* acquire(void); // Acquires a reference to the singleton rendering object

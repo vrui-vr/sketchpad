@@ -22,6 +22,13 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 
 #include "Spline.h"
 
+#include <Misc/SizedTypes.h>
+#include <Misc/StdError.h>
+#include <IO/File.h>
+#include <Math/Math.h>
+
+#include "SketchSettings.h"
+#include "RenderState.h"
 #include "PolylineRenderer.h"
 
 /*******************************
@@ -35,16 +42,18 @@ PolylineRenderer* Spline::renderer=0;
 Methods of class Spline:
 ***********************/
 
-void Spline::subdivide(const Point cps[4],GLObject::DataItem* dataItem)
+void Spline::subdivide(const Point cps[4],RenderState& renderState)
 	{
 	/* Check if the spline segment is not sufficiently flat: */
+	Scalar tolerance=renderState.getPixelSize();
 	Vector d=cps[3]-cps[0];
 	Scalar d2=Geometry::sqr(d);
 	bool split=false;
 	if(d2>Scalar(0))
 		{
 		/* Check the midpoints against a cylinder around the endpoints: */
-		split=Geometry::sqr((d^(c[1]-c[0])))>tolerance2*d2||Geometry::sqr((d^(c[2]-c[3])))>tolerance2*d2;
+		Scalar tolerance2D2=Math::sqr(tolerance)*d2;
+		split=Geometry::sqr((d^(cps[1]-cps[0])))>tolerance2D2||Geometry::sqr((d^(cps[2]-cps[3])))>tolerance2D2;
 		if(!split)
 			{
 			Scalar dLen=Math::sqrt(d2);
@@ -54,6 +63,7 @@ void Spline::subdivide(const Point cps[4],GLObject::DataItem* dataItem)
 	else
 		{
 		/* The endpoints are identical; split if the midpoints point outwards: */
+		Scalar tolerance2=Math::sqr(tolerance);
 		split=Geometry::sqrDist(cps[1],cps[0])>tolerance2||Geometry::sqrDist(cps[2],cps[3])>tolerance2;
 		}
 	if(split)
@@ -72,13 +82,13 @@ void Spline::subdivide(const Point cps[4],GLObject::DataItem* dataItem)
 		scps[3]=Geometry::mid(scps[2],scps[4]);
 		
 		/* Recursively render the two sub-segments: */
-		subdivide(scps+0,dataItem);
-		subdivide(scps+3,dataItem);
+		subdivide(scps+0,renderState);
+		subdivide(scps+3,renderState);
 		}
 	else
 		{
 		/* Emit the spline segment as a straight line segment: */
-		renderer->addVertex(cps[3],dataItem);
+		renderer->addVertex(cps[3],renderState.getDataItem());
 		}
 	}
 
@@ -91,9 +101,45 @@ void Spline::initClass(unsigned int newTypeCode)
 	renderer=PolylineRenderer::acquire();
 	}
 
-Spline::Spline(void)
+Spline::Spline(const Color& sColor,Scalar sLineWidth,const Point cps[4])
+	:color(sColor),lineWidth(sLineWidth),
+	 version(0)
+	{
+	/* Copy the initial control point array and initialize the bounding box: */
+	for(int i=0;i<4;++i)
+		{
+		points.push_back(cps[i]);
+		boundingBox.addPoint(cps[i]);
+		}
+	
+	++version;
+	}
+
+Spline::Spline(IO::File& file)
 	:version(0)
 	{
+	/* Read the color and line width: */
+	for(int i=0;i<4;++i)
+		color[i]=file.read<Misc::UInt8>();
+	lineWidth=file.read<Misc::Float32>();
+	
+	/* Read the number of control points: */
+	size_t numPoints=file.read<Misc::UInt16>();
+	if(numPoints<4U||numPoints%3U!=1U)
+		throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Invalid number of spline control points");
+	
+	/* Read the control point vector and calculate the bounding box: */
+	points.reserve(numPoints);
+	for(size_t i=0;i<numPoints;++i)
+		{
+		Point p;
+		for(int j=0;j<3;++j)
+			p[j]=file.read<Misc::Float32>();
+		points.push_back(p);
+		boundingBox.addPoint(p);
+		}
+	
+	++version;
 	}
 
 Spline::~Spline(void)
@@ -121,16 +167,8 @@ bool Spline::pick(PickResult& result)
 
 SketchObject* Spline::clone(void) const
 	{
-	/* Create a new spline object: */
-	Spline* result=new Spline;
-	
-	/* Copy this spline's bounding box, parameters, and point vector: */
-	result->boundingBox=boundingBox;
-	result->color=color;
-	result->lineWidth=lineWidth;
-	result->points=points;
-	
-	return result;
+	/* Return a new spline object: */
+	return new Spline(*this);
 	}
 
 void Spline::applySettings(const SketchSettings& settings)
@@ -177,36 +215,6 @@ void Spline::write(IO::File& file,const SketchObjectCreator& creator) const
 			file.write<Misc::Float32>((*pIt)[i]);
 	}
 
-void Spline::read(IO::File& file,SketchObjectCreator& creator)
-	{
-	/* Read the color and line width: */
-	for(int i=0;i<4;++i)
-		color[i]=file.read<Misc::UInt8>();
-	lineWidth=file.read<Misc::Float32>();
-	
-	/* Read the number of control points: */
-	size_t numPoints=file.read<Misc::UInt16>();
-	
-	/* Read a new control point vector and calculate a new bounding box: */
-	std::vector<Point> newPoints;
-	newPoints.reserve(numPoints);
-	Box newBoundingBox=Box::empty;
-	for(size_t i=0;i<numPoints;++i)
-		{
-		Point p;
-		for(int j=0;j<3;++j)
-			p[j]=file.read<Misc::Float32>();
-		newPoints.push_back(p);
-		newBoundingBox.addPoint(p);
-		}
-	
-	/* Swap the old and new bounding box and control point vector: */
-	boundingBox=newBoundingBox;
-	std::swap(points,newPoints);
-	
-	++version;
-	}
-
 void Spline::glRenderAction(RenderState& renderState) const
 	{
 	/* Draw the spline using a polyline renderer: */
@@ -223,7 +231,7 @@ void Spline::glRenderAction(RenderState& renderState) const
 			Point cps[4];
 			for(int i=0;i<4;++i)
 				cps[i]=pIt[i];
-			subdivide(cps,renderState.getDataItem());
+			subdivide(cps,renderState);
 			}
 		
 		/* Finish and draw the spline: */

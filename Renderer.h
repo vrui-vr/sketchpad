@@ -26,12 +26,15 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GL/gl.h>
 #include <GL/GLObject.h>
 
+/* Forward declarations: */
+class RenderState;
+
 class Renderer:public GLObject
 	{
 	/* New methods: */
 	public:
-	virtual DataItem* activate(GLContextData& contextData) const =0; // Activates the renderer in the given OpenGL context and returns a context state object to be used for subsequent rendering calls
-	virtual void deactivate(DataItem* dataItem) const =0; // Deactivates the renderer in the OpenGL context in which it was previously activated; callee will dispose of context state object
+	virtual DataItem* activate(RenderState& renderState) const =0; // Activates the renderer in the OpenGL context associated with the given render state and returns a context state object to be used for subsequent rendering calls
+	virtual void deactivate(GLObject::DataItem* dataItem,RenderState& renderState) const =0; // Deactivates the renderer in the OpenGL context in which it was previously activated; callee will dispose of context state object
 	};
 
 #endif

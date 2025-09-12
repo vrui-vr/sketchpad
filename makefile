@@ -148,6 +148,7 @@ SKETCHPAD_SOURCES = RenderState.cpp \
                     Group.cpp \
                     ImageRenderer.cpp \
                     Image.cpp \
+                    Spline.cpp \
                     SketchObjectCreator.cpp \
                     PaintBucket.cpp \
                     SketchPad.cpp \

@@ -44,6 +44,27 @@ void Group::initClass(unsigned int newTypeCode)
 	typeCode=newTypeCode;
 	}
 
+Group::Group(void)
+	{
+	}
+
+Group::Group(IO::File& file,const SketchObjectCreator& creator)
+	{
+	/* Read the number of group members: */
+	size_t numMembers=file.read<Misc::UInt16>();
+	
+	/* Read all members of the group and calculate the bounding box: */
+	for(size_t i=0;i<numMembers;++i)
+		{
+		/* Read the new member: */
+		SketchObject* newMember=creator.readObject(file);
+		
+		/* Add the new member to the list and update the bounding box: */
+		SketchObjectContainer::append(newMember);
+		boundingBox.addBox(newMember->getBoundingBox());
+		}
+	}
+
 void Group::deinitClass(void)
 	{
 	}
@@ -155,30 +176,6 @@ void Group::write(IO::File& file,const SketchObjectCreator& creator) const
 		/* Write the member: */
 		creator.writeObject(&*soIt,file);
 		}
-	}
-
-void Group::read(IO::File& file,SketchObjectCreator& creator)
-	{
-	/* Read the number of group members: */
-	size_t numMembers=file.read<Misc::UInt16>();
-	
-	/* Read all members of the group and calculate a new bounding box: */
-	SketchObjectList newSketchObjects;
-	Box newBoundingBox=Box::empty;
-	for(size_t i=0;i<numMembers;++i)
-		{
-		/* Read the new member: */
-		SketchObject* newMember=creator.readObject(file);
-		
-		/* Add the new member to the list and update the bounding box: */
-		newSketchObjects.push_back(newMember);
-		newBoundingBox.addBox(newMember->getBoundingBox());
-		}
-	
-	/* Install the new bounding box and member list: */
-	boundingBox=newBoundingBox;
-	sketchObjects.clear();
-	newSketchObjects.transfer(sketchObjects);
 	}
 
 void Group::glRenderAction(RenderState& renderState) const
