@@ -26,6 +26,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Misc/StdError.h>
 #include <IO/File.h>
 #include <Math/Math.h>
+#include <Math/Constants.h>
 #include <Math/Matrix.h>
 #include <Geometry/OrthogonalTransformation.h>
 #include <GL/gl.h>
@@ -35,6 +36,31 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "SketchSettings.h"
 #include "RenderState.h"
 #include "PolylineRenderer.h"
+
+// DEBUGGING
+#include <iostream>
+
+/**********************************************
+Declaration of struct Spline::SubdivisionState:
+**********************************************/
+
+struct Spline::SubdivisionState
+	{
+	/* Elements: */
+	public:
+	RenderState& renderState; // Reference to current render state
+	Scalar threshold2; // Squared subdivision threshold in model coordinate units
+	Scalar maxNonSubdivided2; // Squared maximum non-flatness of any non-subdivided spline subsegment
+	Scalar minSubdivided2; // Squared minimum non-flatness of any subdivided spline subsegment
+	
+	/* Constructors and destructors: */
+	SubdivisionState(RenderState& sRenderState)
+		:renderState(sRenderState),
+		 threshold2(Math::sqr(renderState.getPixelSize()*Scalar(0.5))),
+		 maxNonSubdivided2(0),minSubdivided2(Math::Constants<Scalar>::infinity)
+		{
+		}
+	};
 
 /*******************************
 Static elements of class Spline:
@@ -47,32 +73,46 @@ PolylineRenderer* Spline::renderer=0;
 Methods of class Spline:
 ***********************/
 
-void Spline::subdivide(const Point cps[4],RenderState& renderState)
+void Spline::subdivide(const Point cps[4],Spline::SubdivisionState& subdivisionState)
 	{
-	/* Check if the spline segment is not sufficiently flat: */
-	Scalar tolerance=renderState.getPixelSize()*0.5f;
+	/* Calculate the non-flatness of this spline segment: */
 	Vector d=cps[3]-cps[0];
 	Scalar d2=Geometry::sqr(d);
-	bool split=false;
+	Scalar dist2(0);
 	if(d2>Scalar(0))
 		{
-		/* Check the midpoints against a cylinder around the endpoints: */
-		Scalar tolerance2D2=Math::sqr(tolerance)*d2;
-		split=Geometry::sqr((d^(cps[1]-cps[0])))>tolerance2D2||Geometry::sqr((d^(cps[2]-cps[3])))>tolerance2D2;
-		if(!split)
-			{
-			Scalar dLen=Math::sqrt(d2);
-			split=(cps[1]-cps[0])*d<-tolerance*dLen||(cps[2]-cps[3])*d>tolerance*dLen;
-			}
+		/* Calculate the first midpoint's squared distance to the secant: */
+		Vector v1=cps[1]-cps[0];
+		Scalar x1=(v1*d)/d2;
+		if(x1<=Scalar(0))
+			dist2=Geometry::sqrDist(cps[0],cps[1]);
+		else if(x1>=Scalar(1))
+			dist2=Geometry::sqrDist(cps[3],cps[1]);
+		else
+			dist2=Geometry::sqr((d^v1))/d2;
+		
+		/* Calculate the second midpoint's squared distance to the secant: */
+		Vector v2=cps[2]-cps[0];
+		Scalar x2=(v2*d)/d2;
+		if(x2<=Scalar(0))
+			dist2=Math::max(dist2,Geometry::sqrDist(cps[0],cps[2]));
+		else if(x2>=Scalar(1))
+			dist2=Math::max(dist2,Geometry::sqrDist(cps[3],cps[2]));
+		else
+			dist2=Math::max(dist2,Geometry::sqr((d^v2))/d2);
 		}
 	else
 		{
-		/* The endpoints are identical; split if the midpoints point outwards: */
-		Scalar tolerance2=Math::sqr(tolerance);
-		split=Geometry::sqrDist(cps[1],cps[0])>tolerance2||Geometry::sqrDist(cps[2],cps[3])>tolerance2;
+		/* Calculate the maximum distance from the first or second midpoint to the secant point: */
+		dist2=Math::max(Geometry::sqrDist(cps[0],cps[1]),Geometry::sqrDist(cps[0],cps[2]));
 		}
-	if(split)
+	
+	/* Check if the spline segment is not sufficiently flat: */
+	if(dist2>=subdivisionState.threshold2)
 		{
+		if(subdivisionState.minSubdivided2>dist2)
+			subdivisionState.minSubdivided2=dist2;
+		
 		/* Subdivide the spline segment at the midpoint: */
 		Point scps[7];
 		scps[0]=cps[0];
@@ -87,13 +127,16 @@ void Spline::subdivide(const Point cps[4],RenderState& renderState)
 		scps[3]=Geometry::mid(scps[2],scps[4]);
 		
 		/* Recursively render the two sub-segments: */
-		subdivide(scps+0,renderState);
-		subdivide(scps+3,renderState);
+		subdivide(scps+0,subdivisionState);
+		subdivide(scps+3,subdivisionState);
 		}
 	else
 		{
+		if(subdivisionState.maxNonSubdivided2<dist2)
+			subdivisionState.maxNonSubdivided2=dist2;
+		
 		/* Emit the spline segment as a straight line segment: */
-		renderer->addVertex(cps[3],renderState.getDataItem());
+		renderer->addVertex(cps[3],subdivisionState.renderState.getDataItem());
 		}
 	}
 
@@ -227,6 +270,7 @@ void Spline::glRenderAction(RenderState& renderState) const
 	if(renderer->draw(this,version,color,lineWidth,renderState.getDataItem()))
 		{
 		/* Regenerate the spline's vertices: */
+		SubdivisionState subdivisionState(renderState);
 		std::vector<Point>::const_iterator pIt=points.begin();
 		renderer->addVertex(*pIt,renderState.getDataItem());
 		std::vector<Point>::const_iterator pEnd=points.end()-1;
@@ -236,10 +280,14 @@ void Spline::glRenderAction(RenderState& renderState) const
 			Point cps[4];
 			for(int i=0;i<4;++i)
 				cps[i]=pIt[i];
-			subdivide(cps,renderState);
+			subdivide(cps,subdivisionState);
 			}
 		
+		// DEBUGGING
+		// std::cout<<Math::sqrt(subdivisionState.maxNonSubdivided2)*Scalar(2)<<" < "<<renderState.getPixelSize()<<" < "<<Math::sqrt(subdivisionState.minSubdivided2)*Scalar(2)<<std::endl;
+		
 		/* Finish and draw the spline: */
+		renderer->setPixelSizeRange(Math::sqrt(subdivisionState.maxNonSubdivided2)*Scalar(2),Math::sqrt(subdivisionState.minSubdivided2)*Scalar(2),renderState.getDataItem());
 		renderer->finish(renderState.getDataItem());
 		}
 	}
@@ -257,6 +305,7 @@ void Spline::glRenderActionHighlight(Scalar cycle,RenderState& renderState) cons
 	if(renderer->draw(this,version,highlight,lineWidth,renderState.getDataItem()))
 		{
 		/* Regenerate the spline's vertices: */
+		SubdivisionState subdivisionState(renderState);
 		std::vector<Point>::const_iterator pIt=points.begin();
 		renderer->addVertex(*pIt,renderState.getDataItem());
 		std::vector<Point>::const_iterator pEnd=points.end()-1;
@@ -266,10 +315,11 @@ void Spline::glRenderActionHighlight(Scalar cycle,RenderState& renderState) cons
 			Point cps[4];
 			for(int i=0;i<4;++i)
 				cps[i]=pIt[i];
-			subdivide(cps,renderState);
+			subdivide(cps,subdivisionState);
 			}
 		
 		/* Finish and draw the spline: */
+		renderer->setPixelSizeRange(Math::sqrt(subdivisionState.maxNonSubdivided2),Math::sqrt(subdivisionState.minSubdivided2),renderState.getDataItem());
 		renderer->finish(renderState.getDataItem());
 		}
 	}
@@ -555,6 +605,64 @@ void SplineFactory::fitCubicC1(Point c[4],const Point& c0,const Vector& t0,const
 		}
 	}
 
+#if 0
+
+void SplineFactory::splitCubic(Point c[7],const Point& c0,const Point& c6,Scalar split) const
+	{
+	/* Fit two C1-continuous Bezier curves to the set of active input points: */
+	Scalar splitParam=split*inputCurveLength;
+	for(int dim=0;dim<3;++dim)
+		{
+		Math::Matrix ata(6,6,0.0);
+		Math::Matrix atb(6,1,0.0);
+		
+		for(InputCurve::const_iterator icIt=inputCurve.begin();icIt!=inputCurve.end();++icIt)
+			{
+			double eq[6];
+			
+			/* Check on which side of the split the input point is: */
+			if(icIt->param<splitParam)
+				{
+				/* Calculate the input point's Bernstein polynomials: */
+				double b[4];
+				calcBernsteinPolynomials3(icIt->param/splitParam,b);
+				
+				/* Add the input point to the least-squares system: */
+				eq[0]=b[0];
+				eq[1]=b[1];
+				eq[2]=b[2]+0.5*b[3];
+				eq[3]=0.5*b[3];
+				eq[4]=0.0;
+				eq[5]=0.0;
+				}
+			else
+				{
+				/* Calculate the input point's Bernstein polynomials: */
+				double b[4];
+				calcBernsteinPolynomials3((icIt->param-splitParam)/(inputCurveLength-splitParam),b);
+				
+				/* Add the input point to the least-squares system: */
+				eq[0]=0.0;
+				eq[1]=0.0;
+				eq[2]=0.5*b[0];
+				eq[3]=b[1]+0.5*b[0];
+				eq[4]=b[2];
+				eq[5]=b[3];
+				}
+			
+			/* Enter the point into the least-squares system: */
+			for(int i=0;i<6;++i)
+				{
+				for(int j=0;j<6;++j)
+					ata(i,j)+=eq[i]*eq[j];
+				atb(i,0)+=eq[i]*icIt->pos[i];
+				}
+			
+		}
+	}
+
+#endif
+
 SplineFactory::SplineFactory(SketchSettings& sSettings)
 	:SketchObjectFactory(sSettings),
 	 current(0)
@@ -594,7 +702,7 @@ void SplineFactory::buttonDown(const Point& pos)
 void SplineFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood)
 	{
 	/* Calculate the current tolerance: */
-	Scalar tolerance(Vrui::getUiSize()*Vrui::getInverseNavigationTransformation().getScaling());
+	Scalar tolerance(Vrui::getUiSize()*Scalar(0.25)*Vrui::getInverseNavigationTransformation().getScaling());
 	
 	/* Add the input point to the input curve: */
 	Scalar dist(Geometry::dist(inputCurve.back().pos,pos));
@@ -604,7 +712,7 @@ void SplineFactory::motion(const Point& pos,bool lingering,bool firstNeighborhoo
 	/* Re-fit the current spline segment: */
 	Point newC[4];
 	if(g1)
-		fitCubicC1(newC,controlPoints[0],t0,pos);
+		fitCubicG1(newC,controlPoints[0],t0,pos);
 	else
 		fitCubic(newC,controlPoints[0],pos);
 	
@@ -622,25 +730,67 @@ void SplineFactory::motion(const Point& pos,bool lingering,bool firstNeighborhoo
 		}
 	else
 		{
-		/* Fix the current spline segment: */
-		fixedBox=current->boundingBox;
+		/* Split the current spline segment somewhere in the middle: */
+		Point splitC[7];
+		splitC[0]=controlPoints[0];
+		splitC[2]=controlPoints[1];
+		splitC[4]=controlPoints[2];
+		splitC[6]=controlPoints[3];
+		splitC[1]=Geometry::affineCombination(splitC[0],splitC[2],Scalar(0.75));
+		splitC[3]=Geometry::affineCombination(splitC[2],splitC[4],Scalar(0.75));
+		splitC[5]=Geometry::affineCombination(splitC[4],splitC[6],Scalar(0.75));
+		splitC[2]=Geometry::affineCombination(splitC[1],splitC[3],Scalar(0.75));
+		splitC[4]=Geometry::affineCombination(splitC[3],splitC[5],Scalar(0.75));
+		splitC[3]=Geometry::affineCombination(splitC[2],splitC[4],Scalar(0.75));
 		
-		/* Add a new segment to the current spline: */
-		for(int i=1;i<4;++i)
-			current->points.push_back(pos);
+		/* Fix the first part of the split spline segment: */
+		std::vector<Point>::iterator segmentStart=current->points.end()-4;
+		for(int i=0;i<4;++i)
+			{
+			segmentStart[i]=splitC[i];
+			fixedBox.addPoint(splitC[i]);
+			}
 		
-		/* Re-initialize the input curve: */
-		inputCurve.clear();
-		inputCurve.push_back(InputPoint(pos,tolerance,0,0));
+		/* Add the second part of the split segment to the current spline: */
+		current->boundingBox=fixedBox;
+		for(int i=4;i<7;++i)
+			{
+			current->points.push_back(splitC[i]);
+			current->boundingBox.addPoint(splitC[i]);
+			}
+		
+		/* Remove the covered part of the input curve: */
+		InputCurve::iterator icIt;
+		for(icIt=inputCurve.begin();icIt!=inputCurve.end()&&icIt->param<=inputCurveLength*Scalar(0.75);++icIt)
+			;
+		inputCurve.erase(inputCurve.begin(),icIt);
+		
 		inputCurveLength=Scalar(0);
-		
-		/* Enforce G1 continuity with the current segment: */
-		g1=true;
-		t0=controlPoints[3]-controlPoints[2];
+		if(!inputCurve.empty())
+			{
+			/* Re-parametrize the remaining input curve: */
+			icIt=inputCurve.begin();
+			icIt->dist=Scalar(0);
+			icIt->param=Scalar(0);
+			for(++icIt;icIt!=inputCurve.end();++icIt)
+				{
+				inputCurveLength+=icIt->dist;
+				icIt->param=inputCurveLength;
+				}
+			}
+		else
+			{
+			// DEBUGGING
+			std::cout<<"Whoopsie"<<std::endl;
+			}
 		
 		/* Re-initialize the new spline segment: */
 		for(int i=0;i<4;++i)
-			controlPoints[i]=pos;
+			controlPoints[i]=splitC[3+i];
+		
+		/* Enforce G1 continuity with the current segment: */
+		// g1=true;
+		t0=controlPoints[1]-controlPoints[0];
 		}
 	
 	++current->version;
@@ -672,7 +822,11 @@ void SplineFactory::glRenderAction(RenderState& renderState) const
 		
 		/* Draw the current input curve: */
 		renderState.setRenderer(0);
-		glColor3f(0.0f,0.0f,0.0f);
+		glColor3f(1.0f,1.0f,1.0f);
+		glBegin(GL_LINE_STRIP);
+		for(int i=0;i<4;++i)
+			glVertex(controlPoints[i]);
+		glEnd();
 		glBegin(GL_POINTS);
 		for(InputCurve::const_iterator icIt=inputCurve.begin();icIt!=inputCurve.end();++icIt)
 			glVertex(icIt->pos);

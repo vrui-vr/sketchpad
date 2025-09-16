@@ -36,6 +36,9 @@ class Spline:public SketchObject
 	friend class SketchObjectCreator;
 	friend class SplineFactory;
 	
+	/* Embedded classes: */
+	struct SubdivisionState; // Forward declaration of structure to keep track of spline subdivision
+	
 	/* Elements: */
 	private:
 	static unsigned int typeCode; // The spline class's type code
@@ -47,7 +50,7 @@ class Spline:public SketchObject
 	unsigned int version; // Version number of control point list
 	
 	/* Private methods: */
-	static void subdivide(const Point cps[4],RenderState& renderState); // Renders the spline as a polyline using recursive subdivision
+	static void subdivide(const Point cps[4],SubdivisionState& subdivisionState); // Renders the spline as a polyline using recursive subdivision
 	
 	/* Constructors and destructors: */
 	public:

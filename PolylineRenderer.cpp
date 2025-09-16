@@ -26,6 +26,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <stddef.h>
 #include <Misc/StandardHashFunction.h>
 #include <Misc/HashTable.h>
+#include <Math/Constants.h>
 #include <Geometry/OrthogonalTransformation.h>
 #include <GL/gl.h>
 #include <GL/GLColorTemplates.h>
@@ -95,11 +96,15 @@ struct PolylineRenderer::DataItem:public GLObject::DataItem
 		MemoryBlock* memoryBlock; // Pointer to memory block containing the polyline's vertex data
 		size_t offset,size; // Offset and size of memory chunk allocated to the polyline, in units of vertices
 		unsigned int version; // Version number of polyline in the cache
+		Scalar pixelSizeRange[2]; // Range of pixel sizes for which this cached polyline remains valid
 		
 		/* Constructors and destructors: */
 		CacheItem(MemoryBlock* sMemoryBlock,size_t sOffset,size_t sSize)
-			:memoryBlock(sMemoryBlock),offset(sOffset),size(sSize),version(0)
+			:memoryBlock(sMemoryBlock),offset(sOffset),size(sSize),
+			 version(0)
 			{
+			pixelSizeRange[0]=Scalar(0);
+			pixelSizeRange[1]=Math::Constants<Scalar>::infinity;
 			}
 		};
 	
@@ -108,6 +113,7 @@ struct PolylineRenderer::DataItem:public GLObject::DataItem
 	/* Elements: */
 	public:
 	std::vector<MemoryBlock*> memoryBlocks; // List of memory blocks managed by this renderer
+	Scalar pixelSize; // Current pixel size
 	CacheMap cacheMap; // Map of cached polylines
 	GLuint currentBufferId; // ID of currently bound buffer object
 	bool haveCoreGeometryShaders; // Flag whether the OpenGL context supports core feature geometry shaders
@@ -159,7 +165,7 @@ Methods of struct PolylineRenderer::DataItem:
 ********************************************/
 
 PolylineRenderer::DataItem::DataItem(GLContextData& contextData)
-	:cacheMap(17),
+	:pixelSize(0),cacheMap(17),
 	 currentBufferId(0U),
 	 haveCoreGeometryShaders(contextData.getContext().isVersionLargerEqual(3,2)),
 	 primitiveType(haveCoreGeometryShaders?GL_LINE_STRIP_ADJACENCY:GL_LINE_STRIP_ADJACENCY_ARB),
@@ -424,6 +430,9 @@ GLObject::DataItem* PolylineRenderer::activate(RenderState& renderState) const
 	/* Retrieve the context data item: */
 	DataItem* dataItem=renderState.contextData.retrieveDataItem<DataItem>(this);
 	
+	/* Store the current pixel size: */
+	dataItem->pixelSize=renderState.getPixelSize();
+	
 	/* Enable vertex array rendering: */
 	glEnableClientState(GL_VERTEX_ARRAY);
 	
@@ -620,7 +629,7 @@ bool PolylineRenderer::draw(const void* cacheId,unsigned int version,const Color
 		/* Upload the polyline's vertices later: */
 		uploadPolyline=true;
 		}
-	else if(cmIt->getDest().version!=version)
+	else if(cmIt->getDest().version!=version||cmIt->getDest().pixelSizeRange[0]>myDataItem->pixelSize||cmIt->getDest().pixelSizeRange[1]<myDataItem->pixelSize)
 		{
 		/* Release the polyline's current memory chunk: */
 		myDataItem->release(cmIt->getDest());
@@ -726,6 +735,17 @@ void PolylineRenderer::addVertex(const Point& vertex,GLObject::DataItem* dataIte
 		myDataItem->uploadPtr+=myDataItem->uploadItem->offset;
 		myDataItem->uploadEnd=myDataItem->uploadPtr+myDataItem->uploadItem->size;
 		}
+	}
+
+
+void PolylineRenderer::setPixelSizeRange(Scalar pixelSizeMin,Scalar pixelSizeMax,GLObject::DataItem* dataItem) const
+	{
+	/* Retrieve the data item: */
+	DataItem* myDataItem=static_cast<DataItem*>(dataItem);
+	
+	/* Set the currently uploaded polyline's pixel size range: */
+	myDataItem->uploadItem->pixelSizeRange[0]=pixelSizeMin;
+	myDataItem->uploadItem->pixelSizeRange[1]=pixelSizeMax;
 	}
 
 void PolylineRenderer::finish(GLObject::DataItem* dataItem) const

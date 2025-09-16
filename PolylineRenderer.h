@@ -70,6 +70,7 @@ class PolylineRenderer:public Renderer
 	void draw(const void* cacheId,unsigned int version,const Polyline& polyline,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const; // Caches the given polyline and renders it with the given color and line width
 	bool draw(const void* cacheId,unsigned int version,const Color& color,Scalar lineWidth,GLObject::DataItem* dataItem) const; // Renders an already cached polyline or prepares to upload polyline vertices one at a time; returns true if vertices need to be uploaded
 	void addVertex(const Point& vertex,GLObject::DataItem* dataItem) const; // Uploads an additional vertex to the polyline being uploaded
+	void setPixelSizeRange(Scalar pixelSizeMin,Scalar pixelSizeMax,GLObject::DataItem* dataItem) const; // Sets the valid pixel size range of the polyline currently being uploaded
 	void finish(GLObject::DataItem* dataItem) const; // Finishes uploading and draws the polyline being uploaded
 	void drop(const void* cacheId); // Marks the given item to be dropped from the cache during the next rendering cycle
 	};
