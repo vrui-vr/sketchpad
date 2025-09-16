@@ -28,6 +28,8 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Math/Math.h>
 #include <Math/Matrix.h>
 #include <Geometry/OrthogonalTransformation.h>
+#include <GL/gl.h>
+#include <GL/GLGeometryWrappers.h>
 #include <Vrui/Vrui.h>
 
 #include "SketchSettings.h"
@@ -48,7 +50,7 @@ Methods of class Spline:
 void Spline::subdivide(const Point cps[4],RenderState& renderState)
 	{
 	/* Check if the spline segment is not sufficiently flat: */
-	Scalar tolerance=renderState.getPixelSize();
+	Scalar tolerance=renderState.getPixelSize()*0.5f;
 	Vector d=cps[3]-cps[0];
 	Scalar d2=Geometry::sqr(d);
 	bool split=false;
@@ -282,6 +284,16 @@ namespace {
 Helper functions:
 ****************/
 
+inline Point evaluate(const Point c[4],Scalar parameter) // Evaluates the given Bezier segment for the given parameter in [0, 1]
+	{
+	Point i1=Geometry::affineCombination(c[0],c[1],parameter);
+	Point i3=Geometry::affineCombination(c[1],c[2],parameter);
+	Point i5=Geometry::affineCombination(c[2],c[3],parameter);
+	Point i2=Geometry::affineCombination(i1,i3,parameter);
+	Point i4=Geometry::affineCombination(i3,i5,parameter);
+	return Geometry::affineCombination(i2,i4,parameter);
+	}
+
 inline void calcBernsteinPolynomials3(double param,double b[4]) // Calculates cubic Bernstein polynomials for the given parameter value
 	{
 	/* Calculate the Bernstein polynomials directly: */
@@ -306,6 +318,20 @@ inline void calcBernsteinPolynomials2(double param,double b[3]) // Calculates qu
 	}
 
 }
+
+bool SplineFactory::isGoodFit(const Point c[4]) const
+	{
+	/* Check if every input curve point is within its tolerance of the current Bezier segment: */
+	for(InputCurve::const_iterator icIt=inputCurve.begin();icIt!=inputCurve.end();++icIt)
+		{
+		/* Evaluate the Bezier segment for the input point's parameter: */
+		Point cp=evaluate(c,icIt->param/inputCurveLength);
+		if(Geometry::sqrDist(cp,icIt->pos)>=icIt->tolerance2)
+			return false;
+		}
+	
+	return true;
+	}
 
 void SplineFactory::fitLinear(Point c[4],const Point& c0,const Point& c3) const
 	{
@@ -477,6 +503,58 @@ void SplineFactory::fitCubicG1(Point c[4],const Point& c0,const Vector& t0,const
 		}
 	}
 
+void SplineFactory::fitQuadraticC1(Point c[4],const Point& c0,const Vector& t0,const Point& c3) const
+	{
+	/* Calculate the middle control point: */
+	Point c12=c0+t0;
+	
+	/* Rank-elevate the resulting quadratic Bezier curve: */
+	c[0]=c0;
+	c[1]=Geometry::affineCombination(c0,c12,Scalar(2.0/3.0));
+	c[2]=Geometry::affineCombination(c12,c3,Scalar(1.0/3.0));
+	c[3]=c3;
+	}
+
+void SplineFactory::fitCubicC1(Point c[4],const Point& c0,const Vector& t0,const Point& c3) const
+	{
+	/* Try fitting a cubic Bezier curve to the set of active input points: */
+	double ata[3];
+	double atb[3];
+	for(int dim=0;dim<3;++dim)
+		{
+		ata[dim]=0.0;
+		atb[dim]=0.0;
+		}
+	for(InputCurve::const_iterator icIt=inputCurve.begin();icIt!=inputCurve.end();++icIt)
+		{
+		/* Calculate the input point's Bernstein polynomials: */
+		double b[4];
+		calcBernsteinPolynomials3(icIt->param/inputCurveLength,b);
+		
+		/* Add the input point's equations to the three least-squares system: */
+		for(int dim=0;dim<3;++dim)
+			{
+			ata[dim]+=b[2]*b[2];
+			atb[dim]+=b[2]*(icIt->pos[dim]-c0[dim]*b[0]-(c0[dim]+t0[dim])*b[1]-c3[dim]*b[3]);
+			}
+		}
+	
+	/* Solve the least-squares system: */
+	if(ata[0]!=0.0&&ata[1]!=0.0&&ata[2]!=0.0)
+		{
+		c[0]=c0;
+		c[1]=c0+t0;
+		for(int dim=0;dim<3;++dim)
+			c[2][dim]=atb[dim]/ata[dim];
+		c[3]=c3;
+		}
+	else
+		{
+		/* Fall back to quadratic fitting: */
+		fitQuadraticC1(c,c0,t0,c3);
+		}
+	}
+
 SplineFactory::SplineFactory(SketchSettings& sSettings)
 	:SketchObjectFactory(sSettings),
 	 current(0)
@@ -526,20 +604,45 @@ void SplineFactory::motion(const Point& pos,bool lingering,bool firstNeighborhoo
 	/* Re-fit the current spline segment: */
 	Point newC[4];
 	if(g1)
-		fitCubicG1(newC,controlPoints[0],t0,pos);
+		fitCubicC1(newC,controlPoints[0],t0,pos);
 	else
 		fitCubic(newC,controlPoints[0],pos);
-	for(int i=0;i<4;++i)
-		controlPoints[i]=newC[i];
 	
-	/* Update the current spline: */
-	std::vector<Point>::iterator segmentStart=current->points.end()-4;
-	current->boundingBox=fixedBox;
-	for(int i=0;i<4;++i)
+	/* Check if the new fit is good enough: */
+	if(isGoodFit(newC))
 		{
-		segmentStart[i]=controlPoints[i];
-		current->boundingBox.addPoint(controlPoints[i]);
+		/* Update the current spline's varying segment: */
+		current->boundingBox=fixedBox;
+		std::vector<Point>::iterator segmentStart=current->points.end()-4;
+		for(int i=0;i<4;++i)
+			{
+			segmentStart[i]=controlPoints[i]=newC[i];
+			current->boundingBox.addPoint(newC[i]);
+			}
 		}
+	else
+		{
+		/* Fix the current spline segment: */
+		fixedBox=current->boundingBox;
+		
+		/* Add a new segment to the current spline: */
+		for(int i=1;i<4;++i)
+			current->points.push_back(pos);
+		
+		/* Re-initialize the input curve: */
+		inputCurve.clear();
+		inputCurve.push_back(InputPoint(pos,tolerance,0,0));
+		inputCurveLength=Scalar(0);
+		
+		/* Enforce G1 continuity with the current segment: */
+		g1=true;
+		t0=controlPoints[3]-controlPoints[2];
+		
+		/* Re-initialize the new spline segment: */
+		for(int i=0;i<4;++i)
+			controlPoints[i]=pos;
+		}
+	
 	++current->version;
 	
 	/* Remember if the tool is lingering: */
@@ -564,5 +667,15 @@ void SplineFactory::glRenderAction(RenderState& renderState) const
 	{
 	/* Draw the current spline if it exists: */
 	if(current!=0)
+		{
 		current->glRenderAction(renderState);
+		
+		/* Draw the current input curve: */
+		renderState.setRenderer(0);
+		glColor3f(0.0f,0.0f,0.0f);
+		glBegin(GL_POINTS);
+		for(InputCurve::const_iterator icIt=inputCurve.begin();icIt!=inputCurve.end();++icIt)
+			glVertex(icIt->pos);
+		glEnd();
+		}
 	}

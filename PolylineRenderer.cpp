@@ -643,7 +643,7 @@ bool PolylineRenderer::draw(const void* cacheId,unsigned int version,const Color
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB,myDataItem->currentBufferId);
 		
 		/* Reset the vertex pointers into the new memory block: */
-		glVertexPointer(3,GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+3);
+		glVertexPointer(3,GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+0);
 		}
 	
 	/* Update the line width if necessary: */
@@ -716,7 +716,7 @@ void PolylineRenderer::addVertex(const Point& vertex,GLObject::DataItem* dataIte
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB,myDataItem->currentBufferId);
 			
 			/* Reset the vertex pointers into the new memory block: */
-			glVertexPointer(3,GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+3);
+			glVertexPointer(3,GL_FLOAT,sizeof(DataItem::Vertex),static_cast<const GLfloat*>(0)+0);
 			}
 		
 		/* Release the current memory chunk and install the new one: */

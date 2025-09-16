@@ -103,11 +103,14 @@ class SplineFactory:public SketchObjectFactory
 	Vector t0; // Normalized start tangent vector of the active spline segment if it should link with G1 continuity
 	
 	/* Private methods: */
+	bool isGoodFit(const Point c[4]) const;
 	void fitLinear(Point c[4],const Point& c0,const Point& c3) const;
 	void fitQuadratic(Point c[4],const Point& c0,const Point& c3) const;
 	void fitCubic(Point c[4],const Point& c0,const Point& c3) const;
 	void fitQuadraticG1(Point c[4],const Point& c0,const Vector& t0,const Point& c3) const;
 	void fitCubicG1(Point c[4],const Point& c0,const Vector& t0,const Point& c3) const;
+	void fitQuadraticC1(Point c[4],const Point& c0,const Vector& t0,const Point& c3) const;
+	void fitCubicC1(Point c[4],const Point& c0,const Vector& t0,const Point& c3) const;
 	
 	/* Constructors and destructors: */
 	public:
