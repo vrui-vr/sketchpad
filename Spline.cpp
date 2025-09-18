@@ -39,6 +39,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 
 // DEBUGGING
 #include <iostream>
+#include <Geometry/OutputOperators.h>
 
 /**********************************************
 Declaration of struct Spline::SubdivisionState:
@@ -486,9 +487,11 @@ void SplineFactory::fitQuadraticG1(Point c[4],const Point& c0,const Vector& t0,c
 		calcBernsteinPolynomials2(icIt->param/inputCurveLength,b);
 		
 		/* Add the input point's three equations to the least-squares system: */
-		ata+=b[1];
 		for(int dim=0;dim<3;++dim)
-			atb+=b[1]*t0[dim]*(icIt->pos[dim]-(b[0]+b[1])*c0[dim]-b[2]*c3[dim]);
+			{
+			ata+=Math::sqr(b[1]*t0[dim]);
+			atb+=(b[1]*t0[dim])*(icIt->pos[dim]-(b[0]+b[1])*c0[dim]-b[2]*c3[dim]);
+			}
 		}
 	
 	/* Check if the linear system has a solution: */
@@ -500,8 +503,11 @@ void SplineFactory::fitQuadraticG1(Point c[4],const Point& c0,const Vector& t0,c
 		}
 	else
 		{
+		// DEBUGGING
+		std::cout<<"Rank-deficient quadratic G1 matrix"<<std::endl;
+		
 		/* Just make whatever: */
-		c12=addScaled(c0,t0,Scalar(Geometry::dist(c0,c3)*0.5));
+		c12=Geometry::addScaled(c0,t0,Scalar(Geometry::dist(c0,c3)*0.5));
 		}
 	
 	/* Rank-elevate the resulting quadratic Bezier curve: */
@@ -526,21 +532,29 @@ void SplineFactory::fitCubicG1(Point c[4],const Point& c0,const Vector& t0,const
 			calcBernsteinPolynomials3(icIt->param/inputCurveLength,b);
 			
 			/* Add the input point's three equations to the least-squares system: */
-			ata(0,0)+=b[1]*b[1];
+			double eq[4];
 			for(int dim=0;dim<3;++dim)
 				{
-				ata(0,1+dim)+=b[1]*b[2]*t0[dim];
-				ata(1+dim,0)+=b[1]*b[2]*t0[dim];
-				ata(1+dim,1+dim)+=b[2]*b[2];
-				
+				/* Set up this dimension's equation: */
+				eq[0]=b[1]*t0[dim];
+				for(int i=1;i<4;++i)
+					eq[i]=0.0;
+				eq[1+dim]=b[2];
 				double rhs=icIt->pos[dim]-(b[0]+b[1])*c0[dim]-b[3]*c3[dim];
-				atb(0)+=b[1]*t0[dim]*rhs;
-				atb(1+dim)+=b[2]*rhs;
+				
+				/* Enter the equation into the system: */
+				for(int i=0;i<4;++i)
+					{
+					for(int j=0;j<4;++j)
+						ata(i,j)+=eq[i]*eq[j];
+					atb(i)+=eq[i]*rhs;
+					}
 				}
 			}
 		
 		/* Solve the least-squares system: */
 		Math::Matrix x=atb.divideFullPivot(ata);
+		
 		c[0]=c0;
 		c[1]=Geometry::addScaled(c0,t0,Scalar(x(0)));
 		c[2]=Point(x(1),x(2),x(3));
@@ -548,6 +562,9 @@ void SplineFactory::fitCubicG1(Point c[4],const Point& c0,const Vector& t0,const
 		}
 	catch(const Math::Matrix::RankDeficientError&)
 		{
+		// DEBUGGING
+		std::cout<<"Rank-deficient G1 fitting matrix "<<inputCurve.size()<<std::endl;
+		
 		/* Fall back to quadratic fitting: */
 		fitQuadraticG1(c,c0,t0,c3);
 		}
@@ -702,12 +719,16 @@ void SplineFactory::buttonDown(const Point& pos)
 void SplineFactory::motion(const Point& pos,bool lingering,bool firstNeighborhood)
 	{
 	/* Calculate the current tolerance: */
-	Scalar tolerance(Vrui::getUiSize()*Scalar(0.25)*Vrui::getInverseNavigationTransformation().getScaling());
+	Scalar tolerance(Vrui::getUiSize()*Scalar(0.125)*Vrui::getInverseNavigationTransformation().getScaling());
 	
 	/* Add the input point to the input curve: */
 	Scalar dist(Geometry::dist(inputCurve.back().pos,pos));
 	inputCurveLength+=dist;
 	inputCurve.push_back(InputPoint(pos,tolerance,dist,inputCurveLength));
+	
+	/* Bail out if nothing changed: */
+	if(dist==Scalar(0))
+		return;
 	
 	/* Re-fit the current spline segment: */
 	Point newC[4];
@@ -715,6 +736,19 @@ void SplineFactory::motion(const Point& pos,bool lingering,bool firstNeighborhoo
 		fitCubicG1(newC,controlPoints[0],t0,pos);
 	else
 		fitCubic(newC,controlPoints[0],pos);
+	
+	// DEBUGGING
+	bool finite=true;
+	for(int i=0;i<4;++i)
+		for(int dim=0;dim<3;++dim)
+			finite=finite&&Math::isFinite(newC[i][dim]);
+	if(!finite)
+		{
+		std::cout<<"Invalid control point array";
+		for(int i=0;i<4;++i)
+			std::cout<<' '<<newC[i];
+		std::cout<<std::endl;
+		}
 	
 	/* Check if the new fit is good enough: */
 	if(isGoodFit(newC))
@@ -730,6 +764,9 @@ void SplineFactory::motion(const Point& pos,bool lingering,bool firstNeighborhoo
 		}
 	else
 		{
+		// DEBUGGING
+		// std::cout<<"Splitting input curve of length "<<inputCurve.size()<<", "<<inputCurveLength;
+		
 		/* Split the current spline segment somewhere in the middle: */
 		Point splitC[7];
 		splitC[0]=controlPoints[0];
@@ -760,36 +797,34 @@ void SplineFactory::motion(const Point& pos,bool lingering,bool firstNeighborhoo
 			}
 		
 		/* Remove the covered part of the input curve: */
+		Scalar cutParam=inputCurveLength*Scalar(0.75);
 		InputCurve::iterator icIt;
-		for(icIt=inputCurve.begin();icIt!=inputCurve.end()&&icIt->param<=inputCurveLength*Scalar(0.75);++icIt)
+		for(icIt=inputCurve.begin();icIt!=inputCurve.end()&&icIt->param<cutParam;++icIt)
 			;
 		inputCurve.erase(inputCurve.begin(),icIt);
 		
-		inputCurveLength=Scalar(0);
-		if(!inputCurve.empty())
+		/* Assign a reasonable parameter to the first input curve point: */
+		icIt=inputCurve.begin();
+		icIt->dist=Scalar(0);
+		icIt->param=icIt->param-cutParam;
+		inputCurveLength=icIt->param;
+		
+		/* Re-parametrize the remaining input curve: */
+		for(++icIt;icIt!=inputCurve.end();++icIt)
 			{
-			/* Re-parametrize the remaining input curve: */
-			icIt=inputCurve.begin();
-			icIt->dist=Scalar(0);
-			icIt->param=Scalar(0);
-			for(++icIt;icIt!=inputCurve.end();++icIt)
-				{
-				inputCurveLength+=icIt->dist;
-				icIt->param=inputCurveLength;
-				}
+			inputCurveLength+=icIt->dist;
+			icIt->param=inputCurveLength;
 			}
-		else
-			{
-			// DEBUGGING
-			std::cout<<"Whoopsie"<<std::endl;
-			}
+		
+		// DEBUGGING
+		// std::cout<<" to length "<<inputCurve.size()<<", "<<inputCurveLength<<std::endl;
 		
 		/* Re-initialize the new spline segment: */
 		for(int i=0;i<4;++i)
 			controlPoints[i]=splitC[3+i];
 		
 		/* Enforce G1 continuity with the current segment: */
-		// g1=true;
+		g1=true;
 		t0=controlPoints[1]-controlPoints[0];
 		}
 	
@@ -822,7 +857,7 @@ void SplineFactory::glRenderAction(RenderState& renderState) const
 		
 		/* Draw the current input curve: */
 		renderState.setRenderer(0);
-		glColor3f(1.0f,1.0f,1.0f);
+		glColor3f(0.0f,0.0f,0.0f);
 		glBegin(GL_LINE_STRIP);
 		for(int i=0;i<4;++i)
 			glVertex(controlPoints[i]);

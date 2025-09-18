@@ -741,7 +741,7 @@ SketchObjectFactory* SketchPad::getSketchFactory(void)
 		}
 	else
 		{
-		#if 0
+		#if 1
 		/* Return a new curve factory: */
 		return new CurveFactory(settings);
 		#else
