@@ -1,6 +1,6 @@
 ########################################################################
 # Makefile for the SketchPad vector drawing package.
-# Copyright (c) 1999-2025 Oliver Kreylos
+# Copyright (c) 1999-2026 Oliver Kreylos
 #
 # This file is part of the WhyTools Build Environment.
 # 
@@ -21,7 +21,7 @@
 ########################################################################
 
 # Set directory containing Vrui's build system:
-VRUI_MAKEDIR = /usr/local/share/Vrui-13.0/make
+VRUI_MAKEDIR = /usr/local/share/Vrui-15.0/make
 
 # Base installation directory for SketchPad. If this is set to the
 # default of $(PROJECT_ROOT), SketchPad does not have to be installed to

@@ -1,6 +1,6 @@
 ========================================================================
 README for SketchPad version 1.1
-Copyright (c) 2020-2025 Oliver Kreylos
+Copyright (c) 2020-2026 Oliver Kreylos
 ========================================================================
 
 Overview
@@ -14,7 +14,7 @@ run on environments featuring touchscreens and/or styluses.
 Requirements
 ============
 
-SketchPad requires Vrui version 13.0 build 001 or newer.
+SketchPad requires Vrui version 15.0 build 001 or newer.
 
 Installation Guide
 ==================
@@ -40,7 +40,7 @@ recommended if SketchPad will be used from multiple user accounts.
 2. Change into SketchPad base directory:
    > cd SketchPad-<version>
 
-3. If the Vrui version installed in step 0 was not 13.0, or Vrui's
+3. If the Vrui version installed in step 0 was not 15.0, or Vrui's
    installation directory was changed from the default of /usr/local,
    adapt the makefile using a text editor. Change the value of
    VRUI_MAKEDIR close to the beginning of the file as follows:

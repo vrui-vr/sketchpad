@@ -6,3 +6,6 @@ SketchPad 1.0:
 
 SketchPad 1.1:
 - Adapted makefile to improved Vrui setup.
+- Bumped Vrui version requirement to 15.0-001.
+  - Adapted to new function call scheme.
+- Replaced polyline renderer with improved method.

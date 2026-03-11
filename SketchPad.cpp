@@ -1,7 +1,7 @@
 /***********************************************************************
 SketchPad - A simple sketching application, intended for but not limited
 to multitouch screens with styluses.
-Copyright (c) 2016-2025 Oliver Kreylos
+Copyright (c) 2016-2026 Oliver Kreylos
 
 This file is part of the SketchPad vector drawing package.
 
@@ -25,6 +25,7 @@ Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 
 #include <Misc/SizedTypes.h>
 #include <Misc/MessageLogger.h>
+#include <Threads/FunctionCalls.h>
 #include <IO/File.h>
 #include <IO/OpenFile.h>
 #include <Geometry/HVector.h>
@@ -144,15 +145,15 @@ GLMotif::PopupMenu* SketchPad::createFileMenu(void)
 	GLMotif::PopupMenu* fileMenuPopup=new GLMotif::PopupMenu("FileMenuPopup",Vrui::getWidgetManager());
 	
 	GLMotif::Button* loadSketchFileButton=new GLMotif::Button("LoadSketchFileButton",fileMenuPopup,"Load Sketch File...");
-	sketchFileHelper.addLoadCallback(loadSketchFileButton,Misc::createFunctionCall(this,&SketchPad::loadSketchFile));
+	sketchFileHelper.addLoadCallback(loadSketchFileButton,*Threads::createFunctionCall(this,&SketchPad::loadSketchFile));
 	
 	GLMotif::Button* saveSketchFileButton=new GLMotif::Button("SaveSketchFileButton",fileMenuPopup,"Save Sketch File...");
-	sketchFileHelper.addSaveCallback(saveSketchFileButton,Misc::createFunctionCall(this,&SketchPad::saveSketchFile));
+	sketchFileHelper.addSaveCallback(saveSketchFileButton,*Threads::createFunctionCall(this,&SketchPad::saveSketchFile));
 	
 	fileMenuPopup->addSeparator();
 	
 	GLMotif::Button* loadImageButton=new GLMotif::Button("LoadImageButton",fileMenuPopup,"Load Image...");
-	imageHelper.addLoadCallback(loadImageButton,Misc::createFunctionCall(this,&SketchPad::loadImage));
+	imageHelper.addLoadCallback(loadImageButton,*Threads::createFunctionCall(this,&SketchPad::loadImage));
 	
 	fileMenuPopup->manageMenu();
 	return fileMenuPopup;
